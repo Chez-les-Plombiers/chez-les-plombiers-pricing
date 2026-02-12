@@ -51,7 +51,7 @@ export async function sendToBookingShake(quote: QuoteRequest): Promise<void> {
       phone: quote.phone,
     },
     company: quote.company ? { name: quote.company } : undefined,
-    source_slug: "website",
+    source_id: "D1uUppihf0ACPSs6o9pV", // "Site internet"
   };
 
   const response = await fetch(`${API_BASE_URL}/events/create`, {
