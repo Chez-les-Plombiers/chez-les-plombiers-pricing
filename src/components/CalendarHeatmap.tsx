@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback, useState } from "react";
+import { useRef, useCallback, useState, useMemo } from "react";
 import type { DayPricing } from "@/types";
 import { groupByMonth } from "@/lib/pricing-engine";
 import { MonthGrid } from "./MonthGrid";
@@ -17,6 +17,7 @@ export function CalendarHeatmap({ days, year }: CalendarHeatmapProps) {
   const [selectedDay, setSelectedDay] = useState<DayPricing | null>(null);
   const [activeMonth, setActiveMonth] = useState<number | null>(null);
   const monthRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const today = useMemo(() => new Date().toISOString().split("T")[0], []);
 
   const handleMonthClick = useCallback((month: number) => {
     setActiveMonth(month);
@@ -52,6 +53,7 @@ export function CalendarHeatmap({ days, year }: CalendarHeatmapProps) {
               month={month}
               year={year}
               days={byMonth[month] || []}
+              today={today}
               onDayClick={handleDayClick}
             />
           </div>

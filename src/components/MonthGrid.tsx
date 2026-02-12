@@ -8,10 +8,11 @@ interface MonthGridProps {
   month: number;
   year: number;
   days: DayPricing[];
+  today: string;
   onDayClick: (day: DayPricing) => void;
 }
 
-export function MonthGrid({ month, year, days, onDayClick }: MonthGridProps) {
+export function MonthGrid({ month, year, days, today, onDayClick }: MonthGridProps) {
   const dayLetters = getDayLetters();
   const firstDayISO = days.length > 0 ? getISODayOfWeek(days[0].date) : 1;
   const emptySlots = firstDayISO - 1;
@@ -34,7 +35,7 @@ export function MonthGrid({ month, year, days, onDayClick }: MonthGridProps) {
           <div key={`empty-${i}`} />
         ))}
         {days.map((day) => (
-          <DayCell key={day.date} day={day} onClick={onDayClick} />
+          <DayCell key={day.date} day={day} today={today} onClick={onDayClick} />
         ))}
       </div>
     </div>
