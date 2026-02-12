@@ -1,7 +1,20 @@
 import { NextResponse } from "next/server";
-import { addQuote } from "@/lib/kv";
+import { addQuote, getAllQuotes } from "@/lib/kv";
 import { sendToBookingShake } from "@/lib/bookingshake";
 import type { QuoteRequest } from "@/types";
+
+export async function GET(request: Request) {
+  try {
+    const auth = request.headers.get("Authorization");
+    if (auth !== process.env.ADMIN_PASSWORD) {
+      return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+    }
+    const quotes = await getAllQuotes();
+    return NextResponse.json({ quotes });
+  } catch {
+    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
+  }
+}
 
 export async function POST(request: Request) {
   try {

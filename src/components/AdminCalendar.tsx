@@ -69,9 +69,15 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
   };
 
   const fetchQuotes = async () => {
-    // Quotes are stored in KV, accessed via pricing API for admin
-    // For now we show a placeholder
-    setQuotes([]);
+    try {
+      const res = await fetch("/api/quote", {
+        headers: { Authorization: token },
+      });
+      const data = await res.json();
+      setQuotes(data.quotes || []);
+    } catch {
+      setQuotes([]);
+    }
   };
 
   const byMonth = groupByMonth(days);
@@ -141,7 +147,7 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
           </h3>
           {quotes.length === 0 ? (
             <p className="text-xs text-muted">
-              Aucune demande de devis. Les devis apparaîtront ici une fois le KV configuré.
+              Aucune demande de devis pour le moment.
             </p>
           ) : (
             <div className="flex flex-col gap-2">
