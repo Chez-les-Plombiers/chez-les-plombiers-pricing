@@ -1,12 +1,16 @@
 import { computeYearPricing } from "@/lib/pricing-engine";
+import { getAllOverrides } from "@/lib/kv";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { CalendarHeatmap } from "@/components/CalendarHeatmap";
 
+export const dynamic = "force-dynamic";
+
 const YEAR = 2026;
 
-export default function HomePage() {
-  const days = computeYearPricing(YEAR);
+export default async function HomePage() {
+  const overrides = await getAllOverrides();
+  const days = computeYearPricing(YEAR, overrides);
 
   return (
     <div className="flex min-h-screen flex-col">
