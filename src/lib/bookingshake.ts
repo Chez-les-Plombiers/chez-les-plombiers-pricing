@@ -1,6 +1,8 @@
 import type { QuoteRequest, TimeSlot } from "@/types";
 import { TIME_SLOT_LABELS } from "@/types";
 
+const API_BASE_URL = "https://api.bookingshake.io/api";
+
 const TIME_SLOT_TO_HOURS: Record<TimeSlot, { start: string; end: string }> = {
   journee: { start: "09:00", end: "18:00" },
   soiree: { start: "19:00", end: "23:00" },
@@ -31,9 +33,7 @@ export async function sendToBookingShake(quote: QuoteRequest): Promise<void> {
     .filter(Boolean)
     .join("\n");
 
-  // This will be called via the MCP BookingShake tool in production
-  // For now, we store the formatted data for manual sync
-  console.log("[BookingShake] Would send:", {
+  const payload = {
     bookings: [
       {
         date: bsDate,
@@ -52,5 +52,23 @@ export async function sendToBookingShake(quote: QuoteRequest): Promise<void> {
     },
     company: quote.company ? { name: quote.company } : undefined,
     source_slug: "website",
+  };
+
+  const response = await fetch(`${API_BASE_URL}/events/create`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(payload),
   });
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error(`[BookingShake] API error ${response.status}: ${error}`);
+    throw new Error(`BookingShake API error: ${response.status}`);
+  }
+
+  console.log(`[BookingShake] Event created for ${quote.firstName} ${quote.lastName} on ${bsDate}`);
 }
