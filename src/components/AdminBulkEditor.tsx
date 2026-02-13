@@ -5,7 +5,17 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { X, Loader2 } from "lucide-react";
 import type { TierSlug, TimeSlot } from "@/types";
 import { TIME_SLOT_LABELS } from "@/types";
-import { TIERS } from "@/lib/tier-config";
+import { TIERS, DAY_OF_WEEK_PRICES, FW_PRICE, HALF_DAY_RATIO } from "@/lib/tier-config";
+
+// Sensible default prices per tier for bulk operations
+function getDefaultPricesForTier(tierSlug: TierSlug): Record<TimeSlot, number> {
+  let base: number;
+  if (tierSlug === "fashion-week") base = FW_PRICE;
+  else if (tierSlug === "low") base = DAY_OF_WEEK_PRICES[1]; // Mon = 1000
+  else base = DAY_OF_WEEK_PRICES[3]; // Wed = 3000 (mid-range)
+  const halfDay = Math.round(base * HALF_DAY_RATIO / 100) * 100;
+  return { matinee: halfDay, "apres-midi": halfDay, "journee-complete": base };
+}
 
 // UI-visible tiers (merge premium/medium into one "Demande soutenue")
 const UI_TIERS: { slug: TierSlug; label: string }[] = [
@@ -26,7 +36,7 @@ export function AdminBulkEditor({ token, onClose, onSaved }: AdminBulkEditorProp
   const [endDate, setEndDate] = useState("");
   const [weekdays, setWeekdays] = useState<number[]>([]);
   const [tier, setTier] = useState<TierSlug>("medium");
-  const [prices, setPrices] = useState({ ...TIERS["medium"].prices });
+  const [prices, setPrices] = useState(getDefaultPricesForTier("medium"));
   const [isBooked, setIsBooked] = useState(false);
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
@@ -44,7 +54,7 @@ export function AdminBulkEditor({ token, onClose, onSaved }: AdminBulkEditorProp
 
   function handleTierChange(newTier: TierSlug) {
     setTier(newTier);
-    setPrices({ ...TIERS[newTier].prices });
+    setPrices(getDefaultPricesForTier(newTier));
   }
 
   function getDatesInRange(): string[] {

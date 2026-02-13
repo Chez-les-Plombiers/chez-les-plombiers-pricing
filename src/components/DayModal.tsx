@@ -5,10 +5,17 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import type { DayPricing, TimeSlot } from "@/types";
 import { TIME_SLOT_LABELS } from "@/types";
-import { TIERS } from "@/lib/tier-config";
+import { TIERS, FW_PRICE, HALF_DAY_RATIO } from "@/lib/tier-config";
 import { formatDateFR, formatDayOfWeekFR, formatPrice } from "@/lib/date-utils";
 import { SaveBadge } from "./SaveBadge";
 import { QuoteForm } from "./QuoteForm";
+
+// FW reference prices (standard coeff) for SaveBadge comparison
+const FW_MAX_PRICES: Record<TimeSlot, number> = {
+  matinee: Math.round(FW_PRICE * HALF_DAY_RATIO / 100) * 100,
+  "apres-midi": Math.round(FW_PRICE * HALF_DAY_RATIO / 100) * 100,
+  "journee-complete": FW_PRICE,
+};
 
 interface DayModalProps {
   day: DayPricing;
@@ -19,7 +26,6 @@ export function DayModal({ day, onClose }: DayModalProps) {
   const [showQuoteForm, setShowQuoteForm] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const tier = TIERS[day.tier];
-  const fwPrices = TIERS["fashion-week"].prices;
 
   const handleQuoteClick = (slot: TimeSlot) => {
     setSelectedSlot(slot);
@@ -51,6 +57,11 @@ export function DayModal({ day, onClose }: DayModalProps) {
                 />
                 <span className="text-sm text-muted">
                   {tier.label} — {day.reason}
+                </span>
+              </div>
+              <div className="mt-1">
+                <span className="font-mono text-[10px] uppercase tracking-wider text-accent">
+                  {day.bookingWindowLabel}
                 </span>
               </div>
             </div>
@@ -86,7 +97,7 @@ export function DayModal({ day, onClose }: DayModalProps) {
                         <>
                           <SaveBadge
                             currentPrice={day.prices[slot]}
-                            maxPrice={fwPrices[slot]}
+                            maxPrice={FW_MAX_PRICES[slot]}
                           />
                           <span className="font-mono text-base font-bold text-accent">
                             {formatPrice(day.prices[slot])}

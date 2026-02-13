@@ -2,20 +2,25 @@ export type TierSlug = "fashion-week" | "premium" | "medium" | "low";
 
 export type TimeSlot = "matinee" | "apres-midi" | "journee-complete";
 
+export type BookingWindow = "early-bird" | "standard" | "confirmed" | "last-minute";
+
 export interface TierDefinition {
   slug: TierSlug;
   label: string;
   color: string;
   colorClass: string;
   bgClass: string;
-  prices: Record<TimeSlot, number>;
 }
 
 export interface DayPricing {
   date: string; // YYYY-MM-DD
   tier: TierSlug;
   reason: string;
-  prices: Record<TimeSlot, number>;
+  basePrice: number; // journée complète base
+  prices: Record<TimeSlot, number>; // after booking window coefficient
+  bookingWindow: BookingWindow;
+  bookingWindowLabel: string;
+  bookingWindowCoeff: number;
   isBooked: boolean;
   isBookedMorning: boolean;
   isBookedAfternoon: boolean;
@@ -25,6 +30,7 @@ export interface DayPricing {
 export interface PricingOverride {
   date: string; // YYYY-MM-DD
   tier?: TierSlug;
+  basePrice?: number;
   prices?: Partial<Record<TimeSlot, number>>;
   isBooked?: boolean;
   isBookedMorning?: boolean;

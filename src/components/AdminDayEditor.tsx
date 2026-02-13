@@ -34,7 +34,7 @@ export function AdminDayEditor({ day, token, onClose, onSaved }: AdminDayEditorP
 
   function handleTierChange(newTier: TierSlug) {
     setTier(newTier);
-    setPrices({ ...TIERS[newTier].prices });
+    // Prices stay as-is — admin can adjust manually
   }
 
   async function handleSave() {
