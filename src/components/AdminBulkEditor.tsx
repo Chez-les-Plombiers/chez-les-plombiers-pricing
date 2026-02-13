@@ -229,8 +229,10 @@ export function AdminBulkEditor({ token, onClose, onSaved }: AdminBulkEditorProp
               </div>
             </div>
 
-            {/* Editable prices */}
-            {(Object.keys(TIME_SLOT_LABELS) as TimeSlot[]).map((slot) => (
+            {/* Editable prices — FW = journée complète only */}
+            {(Object.keys(TIME_SLOT_LABELS) as TimeSlot[])
+              .filter((slot) => tier !== "fashion-week" || slot === "journee-complete")
+              .map((slot) => (
               <div key={slot}>
                 <label className="mb-1 block text-xs text-muted">
                   {TIME_SLOT_LABELS[slot]}

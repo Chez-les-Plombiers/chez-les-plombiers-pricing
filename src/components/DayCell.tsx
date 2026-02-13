@@ -30,8 +30,14 @@ export function DayCell({ day, today, onClick }: DayCellProps) {
           : "cursor-pointer hover:border-accent"
       )}
     >
-      {/* Split background: morning (left) + afternoon (right) */}
-      {!isDisabled && (
+      {/* Background: FW = solid color, others = split morning/afternoon */}
+      {!isDisabled && day.tier === "fashion-week" && (
+        <div
+          className="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity"
+          style={{ backgroundColor: tier.color }}
+        />
+      )}
+      {!isDisabled && day.tier !== "fashion-week" && (
         <>
           <div
             className={cn(

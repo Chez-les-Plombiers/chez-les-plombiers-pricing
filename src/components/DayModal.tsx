@@ -70,7 +70,9 @@ export function DayModal({ day, onClose }: DayModalProps) {
 
           {!showQuoteForm ? (
             <div className="mt-6 flex flex-col gap-2">
-              {(Object.keys(TIME_SLOT_LABELS) as TimeSlot[]).map((slot) => {
+              {(Object.keys(TIME_SLOT_LABELS) as TimeSlot[])
+                .filter((slot) => day.tier !== "fashion-week" || slot === "journee-complete")
+                .map((slot) => {
                 const booked = isSlotBooked(slot);
                 return (
                   <div

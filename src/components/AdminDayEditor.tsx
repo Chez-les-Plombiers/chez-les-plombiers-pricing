@@ -32,9 +32,15 @@ export function AdminDayEditor({ day, token, onClose, onSaved }: AdminDayEditorP
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const isFW = tier === "fashion-week";
+
   function handleTierChange(newTier: TierSlug) {
     setTier(newTier);
-    // Prices stay as-is — admin can adjust manually
+    // FW = journée complète only, reset half-day bookings
+    if (newTier === "fashion-week") {
+      setIsBookedMorning(false);
+      setIsBookedAfternoon(false);
+    }
   }
 
   async function handleSave() {
@@ -114,7 +120,9 @@ export function AdminDayEditor({ day, token, onClose, onSaved }: AdminDayEditorP
             </div>
 
             {/* Prices */}
-            {(Object.keys(TIME_SLOT_LABELS) as TimeSlot[]).map((slot) => (
+            {(Object.keys(TIME_SLOT_LABELS) as TimeSlot[])
+              .filter((slot) => !isFW || slot === "journee-complete")
+              .map((slot) => (
               <div key={slot}>
                 <label className="mb-1 block text-xs text-muted">
                   {TIME_SLOT_LABELS[slot]}
@@ -154,7 +162,7 @@ export function AdminDayEditor({ day, token, onClose, onSaved }: AdminDayEditorP
                 />
                 <span className="text-xs text-foreground">Journée complète réservée</span>
               </label>
-              {!isBooked && (
+              {!isBooked && !isFW && (
                 <>
                   <label className="flex items-center gap-2">
                     <input
