@@ -9,9 +9,9 @@ import { TIERS } from "@/lib/tier-config";
 
 // UI-visible tiers (merge premium/medium into one "Demande soutenue")
 const UI_TIERS: { slug: TierSlug; label: string }[] = [
-  { slug: "fashion-week", label: "Haute demande (Fashion Week)" },
-  { slug: "medium", label: "Demande soutenue" },
-  { slug: "low", label: "Basse demande" },
+  { slug: "fashion-week", label: "Demande élevée (Fashion Week)" },
+  { slug: "medium", label: "Demande moyenne" },
+  { slug: "low", label: "Demande basse" },
 ];
 import { formatDateFR, formatDayOfWeekFR } from "@/lib/date-utils";
 

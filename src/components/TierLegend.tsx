@@ -1,9 +1,9 @@
 import { TIERS } from "@/lib/tier-config";
 
 const LEGEND_ITEMS: { slug: keyof typeof TIERS | "booked"; label: string; color?: string }[] = [
-  { slug: "fashion-week", label: "Haute demande" },
-  { slug: "premium", label: "Demande soutenue" },
-  { slug: "low", label: "Basse demande" },
+  { slug: "fashion-week", label: "Demande élevée" },
+  { slug: "premium", label: "Demande moyenne" },
+  { slug: "low", label: "Demande basse" },
   { slug: "booked", label: "Réservé" },
 ];
 

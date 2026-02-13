@@ -1,19 +1,19 @@
 interface SaveBadgeProps {
-  currentPrice: number;
-  maxPrice: number;
+  bookingWindowCoeff: number;
 }
 
-export function SaveBadge({ currentPrice, maxPrice }: SaveBadgeProps) {
-  if (currentPrice >= maxPrice) return null;
-  const percent = Math.round(((maxPrice - currentPrice) / maxPrice) * 100);
-  if (percent < 5) return null;
+export function SaveBadge({ bookingWindowCoeff }: SaveBadgeProps) {
+  // Only show badge when there's a discount (coeff < 1.0)
+  if (bookingWindowCoeff >= 1.0) return null;
+
+  const percent = Math.round((1 - bookingWindowCoeff) * 100);
+  if (percent < 1) return null;
 
   return (
     <span
-      className="border border-tier-low/30 bg-tier-low/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-tier-low"
-      title={`vs tarif Haute demande`}
+      className="border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wider text-emerald-400"
     >
-      -{percent}% vs Haute demande
+      -{percent}%
     </span>
   );
 }

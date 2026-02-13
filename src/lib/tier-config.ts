@@ -3,28 +3,28 @@ import type { TierDefinition, TierSlug, BookingWindow } from "@/types";
 export const TIERS: Record<TierSlug, TierDefinition> = {
   "fashion-week": {
     slug: "fashion-week",
-    label: "Haute demande (Fashion Week)",
+    label: "Demande élevée (Fashion Week)",
     color: "#DC2626",
     colorClass: "text-tier-fashion-week",
     bgClass: "bg-tier-fashion-week",
   },
   premium: {
     slug: "premium",
-    label: "Demande soutenue",
+    label: "Demande moyenne",
     color: "#C8A96E",
     colorClass: "text-tier-premium",
     bgClass: "bg-tier-premium",
   },
   medium: {
     slug: "medium",
-    label: "Demande soutenue",
+    label: "Demande moyenne",
     color: "#C8A96E",
     colorClass: "text-tier-medium",
     bgClass: "bg-tier-medium",
   },
   low: {
     slug: "low",
-    label: "Basse demande",
+    label: "Demande basse",
     color: "#3B82F6",
     colorClass: "text-tier-low",
     bgClass: "bg-tier-low",
