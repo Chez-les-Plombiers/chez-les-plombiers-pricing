@@ -4,9 +4,9 @@ import { TIME_SLOT_LABELS } from "@/types";
 const API_BASE_URL = "https://api.bookingshake.io/api";
 
 const TIME_SLOT_TO_HOURS: Record<TimeSlot, { start: string; end: string }> = {
-  journee: { start: "09:00", end: "18:00" },
-  soiree: { start: "19:00", end: "23:00" },
-  "journee-soiree": { start: "09:00", end: "23:00" },
+  matinee: { start: "07:00", end: "13:00" },
+  "apres-midi": { start: "13:00", end: "19:00" },
+  "journee-complete": { start: "07:00", end: "23:00" },
 };
 
 /**

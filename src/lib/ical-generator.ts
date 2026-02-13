@@ -21,13 +21,13 @@ export function generateICal(days: DayPricing[]): string {
 
     const tier = TIERS[day.tier];
     const dateCompact = day.date.replace(/-/g, "");
-    const summary = `${tier.label} — ${formatPrice(day.prices.journee)} (journée)`;
+    const summary = `${tier.label} — ${formatPrice(day.prices.matinee)} (matinée)`;
     const description = [
       `Tier: ${tier.label}`,
       `Raison: ${day.reason}`,
-      `Journée: ${formatPrice(day.prices.journee)} HT`,
-      `Soirée: ${formatPrice(day.prices.soiree)} HT`,
-      `Journée + Soirée: ${formatPrice(day.prices["journee-soiree"])} HT`,
+      `Matinée (7h-13h): ${formatPrice(day.prices.matinee)} HT`,
+      `Après-midi (13h-19h): ${formatPrice(day.prices["apres-midi"])} HT`,
+      `Journée complète (7h-23h): ${formatPrice(day.prices["journee-complete"])} HT`,
       "",
       "39 rue des Bourdonnais, 75001 Paris",
     ].join("\\n");

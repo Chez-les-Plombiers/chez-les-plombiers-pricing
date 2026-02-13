@@ -16,6 +16,11 @@ export default async function HomePage() {
     <div className="flex min-h-screen flex-col">
       <Navbar />
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6">
+        <div className="mb-4 border border-border bg-surface px-4 py-3 text-xs text-muted">
+          Les tarifs affichés sont fournis à titre indicatif et sont susceptibles
+          d&apos;évoluer selon la demande. Merci de nous contacter via WhatsApp pour
+          confirmation.
+        </div>
         <div className="mb-8">
           <h1 className="font-mono text-xl font-bold uppercase tracking-widest text-foreground sm:text-2xl">
             Calendrier Tarifaire

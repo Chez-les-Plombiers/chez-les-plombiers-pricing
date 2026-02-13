@@ -26,6 +26,14 @@ export function DayModal({ day, onClose }: DayModalProps) {
     setShowQuoteForm(true);
   };
 
+  const isSlotBooked = (slot: TimeSlot) => {
+    if (day.isBooked) return true;
+    if (slot === "matinee") return day.isBookedMorning;
+    if (slot === "apres-midi") return day.isBookedAfternoon;
+    if (slot === "journee-complete") return day.isBookedMorning || day.isBookedAfternoon;
+    return false;
+  };
+
   return (
     <Dialog.Root open onOpenChange={(open) => !open && onClose()}>
       <Dialog.Portal>
@@ -58,33 +66,43 @@ export function DayModal({ day, onClose }: DayModalProps) {
 
           {!showQuoteForm ? (
             <div className="mt-6 flex flex-col gap-2">
-              {(Object.keys(TIME_SLOT_LABELS) as TimeSlot[]).map((slot) => (
-                <div
-                  key={slot}
-                  className="flex items-center justify-between border border-border bg-surface p-3"
-                >
-                  <div className="flex flex-col">
-                    <span className="text-sm text-foreground">
-                      {TIME_SLOT_LABELS[slot]}
-                    </span>
+              {(Object.keys(TIME_SLOT_LABELS) as TimeSlot[]).map((slot) => {
+                const booked = isSlotBooked(slot);
+                return (
+                  <div
+                    key={slot}
+                    className={`flex items-center justify-between border border-border bg-surface p-3 ${booked ? "opacity-50" : ""}`}
+                  >
+                    <div className="flex flex-col">
+                      <span className="text-sm text-foreground">
+                        {TIME_SLOT_LABELS[slot]}
+                      </span>
+                      {booked && (
+                        <span className="text-[10px] text-muted">Réservé</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {!booked && (
+                        <>
+                          <SaveBadge
+                            currentPrice={day.prices[slot]}
+                            maxPrice={fwPrices[slot]}
+                          />
+                          <span className="font-mono text-base font-bold text-accent">
+                            {formatPrice(day.prices[slot])}
+                          </span>
+                          <button
+                            onClick={() => handleQuoteClick(slot)}
+                            className="border border-accent px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-accent transition-colors hover:bg-accent hover:text-background"
+                          >
+                            Devis
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <SaveBadge
-                      currentPrice={day.prices[slot]}
-                      maxPrice={fwPrices[slot]}
-                    />
-                    <span className="font-mono text-base font-bold text-accent">
-                      {formatPrice(day.prices[slot])}
-                    </span>
-                    <button
-                      onClick={() => handleQuoteClick(slot)}
-                      className="border border-accent px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-accent transition-colors hover:bg-accent hover:text-background"
-                    >
-                      Devis
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
               <p className="mt-2 text-[10px] text-muted">
                 Prix HT — Location seule, hors prestations
               </p>

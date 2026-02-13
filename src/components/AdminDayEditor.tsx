@@ -19,6 +19,8 @@ export function AdminDayEditor({ day, token, onClose, onSaved }: AdminDayEditorP
   const [tier, setTier] = useState<TierSlug>(day.tier);
   const [prices, setPrices] = useState(day.prices);
   const [isBooked, setIsBooked] = useState(day.isBooked);
+  const [isBookedMorning, setIsBookedMorning] = useState(day.isBookedMorning);
+  const [isBookedAfternoon, setIsBookedAfternoon] = useState(day.isBookedAfternoon);
   const [reason, setReason] = useState(day.reason);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +40,7 @@ export function AdminDayEditor({ day, token, onClose, onSaved }: AdminDayEditorP
           "Content-Type": "application/json",
           Authorization: token,
         },
-        body: JSON.stringify({ tier, prices, isBooked, reason }),
+        body: JSON.stringify({ tier, prices, isBooked, isBookedMorning, isBookedAfternoon, reason }),
       });
       if (!res.ok) throw new Error("Erreur serveur");
       onSaved();
@@ -134,16 +136,40 @@ export function AdminDayEditor({ day, token, onClose, onSaved }: AdminDayEditorP
               />
             </div>
 
-            {/* Booked toggle */}
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={isBooked}
-                onChange={(e) => setIsBooked(e.target.checked)}
-                className="accent-accent"
-              />
-              <span className="text-xs text-foreground">Marquer comme réservé</span>
-            </label>
+            {/* Booked toggles */}
+            <div className="flex flex-col gap-2">
+              <label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={isBooked}
+                  onChange={(e) => setIsBooked(e.target.checked)}
+                  className="accent-accent"
+                />
+                <span className="text-xs text-foreground">Journée complète réservée</span>
+              </label>
+              {!isBooked && (
+                <>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={isBookedMorning}
+                      onChange={(e) => setIsBookedMorning(e.target.checked)}
+                      className="accent-accent"
+                    />
+                    <span className="text-xs text-foreground">Matinée réservée (7h-13h)</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={isBookedAfternoon}
+                      onChange={(e) => setIsBookedAfternoon(e.target.checked)}
+                      className="accent-accent"
+                    />
+                    <span className="text-xs text-foreground">Après-midi réservé (13h-19h)</span>
+                  </label>
+                </>
+              )}
+            </div>
 
             {error && <p className="text-xs text-tier-premium">{error}</p>}
 

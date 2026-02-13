@@ -1,4 +1,4 @@
-import { MapPin, Calendar } from "lucide-react";
+import { MapPin } from "lucide-react";
 
 export function Footer() {
   return (
@@ -11,21 +11,12 @@ export function Footer() {
               39 rue des Bourdonnais, 75001 Paris
             </div>
             <p className="text-xs text-muted">
-              200m² — Lieu événementiel brutaliste
+              200m² — Lieu événementiel d&apos;exception
             </p>
           </div>
-          <div className="flex flex-col items-start gap-2 sm:items-end">
-            <a
-              href="/api/ical"
-              className="flex items-center gap-2 border border-border px-3 py-2 font-mono text-xs uppercase tracking-wider text-muted transition-colors hover:border-accent hover:text-accent"
-            >
-              <Calendar className="h-3 w-3" />
-              Exporter iCal
-            </a>
-            <p className="text-xs text-muted">
-              Prix HT — Location seule
-            </p>
-          </div>
+          <p className="text-xs text-muted">
+            Prix HT — Location seule
+          </p>
         </div>
       </div>
     </footer>

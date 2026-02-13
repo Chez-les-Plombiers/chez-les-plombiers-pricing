@@ -8,7 +8,7 @@ import { getMonthNameFR, getDayLetters, getISODayOfWeek, getDayOfMonth } from "@
 import { cn } from "@/lib/utils";
 import { AdminDayEditor } from "./AdminDayEditor";
 import { AdminBulkEditor } from "./AdminBulkEditor";
-import { Layers, BarChart3, MessageSquare, RefreshCw } from "lucide-react";
+import { Layers, BarChart3, MessageSquare, RefreshCw, Lock } from "lucide-react";
 
 interface AdminCalendarProps {
   token: string;
@@ -38,6 +38,9 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [calendarPassword, setCalendarPassword] = useState("");
+  const [passwordSaved, setPasswordSaved] = useState(false);
 
   const fetchPricing = useCallback(async () => {
     setLoading(true);
@@ -63,6 +66,35 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
       });
       const data = await res.json();
       setAnalytics(data);
+    } catch {
+      // silently fail
+    }
+  };
+
+  const fetchCalendarPassword = async () => {
+    try {
+      const res = await fetch("/api/admin/calendar-password", {
+        headers: { Authorization: token },
+      });
+      const data = await res.json();
+      setCalendarPassword(data.password || "");
+    } catch {
+      // silently fail
+    }
+  };
+
+  const saveCalendarPassword = async () => {
+    try {
+      await fetch("/api/admin/calendar-password", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: token,
+        },
+        body: JSON.stringify({ password: calendarPassword }),
+      });
+      setPasswordSaved(true);
+      setTimeout(() => setPasswordSaved(false), 2000);
     } catch {
       // silently fail
     }
@@ -114,6 +146,16 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
           Devis
         </button>
         <button
+          onClick={() => {
+            fetchCalendarPassword();
+            setShowPassword(!showPassword);
+          }}
+          className="flex items-center gap-2 border border-border px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-muted transition-colors hover:border-accent hover:text-accent"
+        >
+          <Lock className="h-3 w-3" />
+          Mot de passe
+        </button>
+        <button
           onClick={fetchPricing}
           className="flex items-center gap-2 border border-border px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-muted transition-colors hover:border-accent hover:text-accent"
         >
@@ -121,6 +163,33 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
           Rafraîchir
         </button>
       </div>
+
+      {/* Password panel */}
+      {showPassword && (
+        <div className="border border-border bg-card p-4">
+          <h3 className="mb-3 font-mono text-xs font-bold uppercase tracking-widest text-accent">
+            Mot de passe calendrier
+          </h3>
+          <p className="mb-3 text-xs text-muted">
+            Ce mot de passe protège l&apos;accès au calendrier public. Les clients doivent le saisir pour voir les tarifs.
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={calendarPassword}
+              onChange={(e) => setCalendarPassword(e.target.value)}
+              placeholder="Mot de passe"
+              className="flex-1 border border-border bg-surface px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none"
+            />
+            <button
+              onClick={saveCalendarPassword}
+              className="border border-accent bg-accent px-4 py-2 font-mono text-xs uppercase tracking-wider text-background hover:bg-accent-hover"
+            >
+              {passwordSaved ? "Sauvegardé ✓" : "Sauvegarder"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Analytics panel */}
       {showAnalytics && analytics && (

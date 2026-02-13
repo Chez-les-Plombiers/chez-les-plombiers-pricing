@@ -1,6 +1,6 @@
 export type TierSlug = "fashion-week" | "premium" | "medium" | "low";
 
-export type TimeSlot = "journee" | "soiree" | "journee-soiree";
+export type TimeSlot = "matinee" | "apres-midi" | "journee-complete";
 
 export interface TierDefinition {
   slug: TierSlug;
@@ -17,6 +17,8 @@ export interface DayPricing {
   reason: string;
   prices: Record<TimeSlot, number>;
   isBooked: boolean;
+  isBookedMorning: boolean;
+  isBookedAfternoon: boolean;
   isOverride: boolean;
 }
 
@@ -25,6 +27,8 @@ export interface PricingOverride {
   tier?: TierSlug;
   prices?: Partial<Record<TimeSlot, number>>;
   isBooked?: boolean;
+  isBookedMorning?: boolean;
+  isBookedAfternoon?: boolean;
   reason?: string;
 }
 
@@ -49,7 +53,7 @@ export interface AnalyticsEvent {
 }
 
 export const TIME_SLOT_LABELS: Record<TimeSlot, string> = {
-  journee: "Journée (9h-18h)",
-  soiree: "Soirée (19h-23h)",
-  "journee-soiree": "Journée + Soirée",
+  matinee: "Matinée (7h-13h)",
+  "apres-midi": "Après-midi (13h-19h)",
+  "journee-complete": "Journée complète (7h-23h)",
 };

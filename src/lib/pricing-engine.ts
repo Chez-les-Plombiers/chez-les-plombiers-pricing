@@ -65,10 +65,10 @@ export function computeDayPricing(
   const reason = override?.reason ?? base.reason;
 
   const prices = {
-    journee: override?.prices?.journee ?? tierDef.prices.journee,
-    soiree: override?.prices?.soiree ?? tierDef.prices.soiree,
-    "journee-soiree":
-      override?.prices?.["journee-soiree"] ?? tierDef.prices["journee-soiree"],
+    matinee: override?.prices?.matinee ?? tierDef.prices.matinee,
+    "apres-midi": override?.prices?.["apres-midi"] ?? tierDef.prices["apres-midi"],
+    "journee-complete":
+      override?.prices?.["journee-complete"] ?? tierDef.prices["journee-complete"],
   };
 
   return {
@@ -77,6 +77,8 @@ export function computeDayPricing(
     reason,
     prices,
     isBooked: override?.isBooked ?? false,
+    isBookedMorning: override?.isBookedMorning ?? false,
+    isBookedAfternoon: override?.isBookedAfternoon ?? false,
     isOverride: !!override,
   };
 }

@@ -12,6 +12,7 @@ const OVERRIDES_KEY = "pricing:overrides";
 const QUOTES_KEY = "pricing:quotes";
 const ANALYTICS_KEY = "pricing:analytics";
 const BOOKED_KEY = "pricing:booked";
+const CALENDAR_PASSWORD_KEY = "pricing:calendar-password";
 
 // --- Overrides ---
 
@@ -68,6 +69,21 @@ export async function getAllQuotes(): Promise<QuoteRequest[]> {
   if (!redis) return [];
   const data = await redis.get<QuoteRequest[]>(QUOTES_KEY);
   return data || [];
+}
+
+// --- Calendar Password ---
+
+export async function getCalendarPassword(): Promise<string | null> {
+  const redis = getRedis();
+  if (!redis) return null;
+  const data = await redis.get<string>(CALENDAR_PASSWORD_KEY);
+  return data || null;
+}
+
+export async function setCalendarPassword(password: string): Promise<void> {
+  const redis = getRedis();
+  if (!redis) return;
+  await redis.set(CALENDAR_PASSWORD_KEY, password);
 }
 
 // --- Analytics ---

@@ -10,7 +10,7 @@ interface MonthNavigatorProps {
 
 export function MonthNavigator({ activeMonth, onMonthClick }: MonthNavigatorProps) {
   return (
-    <div className="flex flex-wrap gap-1">
+    <div className="flex flex-wrap gap-1 sm:hidden">
       {Array.from({ length: 12 }).map((_, i) => (
         <button
           key={i}
