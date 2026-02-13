@@ -5,7 +5,14 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { X, Loader2, Trash2 } from "lucide-react";
 import type { DayPricing, TierSlug, TimeSlot } from "@/types";
 import { TIME_SLOT_LABELS } from "@/types";
-import { TIERS, TIER_ORDER } from "@/lib/tier-config";
+import { TIERS } from "@/lib/tier-config";
+
+// UI-visible tiers (merge premium/medium into one "Demande soutenue")
+const UI_TIERS: { slug: TierSlug; label: string }[] = [
+  { slug: "fashion-week", label: "Haute demande (Fashion Week)" },
+  { slug: "medium", label: "Demande soutenue" },
+  { slug: "low", label: "Basse demande" },
+];
 import { formatDateFR, formatDayOfWeekFR } from "@/lib/date-utils";
 
 interface AdminDayEditorProps {
@@ -89,18 +96,18 @@ export function AdminDayEditor({ day, token, onClose, onSaved }: AdminDayEditorP
             <div>
               <label className="mb-1 block text-xs text-muted">Tier</label>
               <div className="flex gap-1">
-                {TIER_ORDER.map((t) => (
+                {UI_TIERS.map(({ slug, label }) => (
                   <button
-                    key={t}
-                    onClick={() => handleTierChange(t)}
+                    key={slug}
+                    onClick={() => handleTierChange(slug)}
                     className="flex-1 border px-2 py-1.5 font-mono text-[10px] uppercase tracking-wider transition-colors"
                     style={{
-                      borderColor: tier === t ? TIERS[t].color : "var(--border)",
-                      backgroundColor: tier === t ? TIERS[t].color + "20" : "transparent",
-                      color: tier === t ? TIERS[t].color : "var(--muted)",
+                      borderColor: tier === slug ? TIERS[slug].color : "var(--border)",
+                      backgroundColor: tier === slug ? TIERS[slug].color + "20" : "transparent",
+                      color: tier === slug ? TIERS[slug].color : "var(--muted)",
                     }}
                   >
-                    {TIERS[t].label}
+                    {label}
                   </button>
                 ))}
               </div>

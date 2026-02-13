@@ -5,7 +5,14 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { X, Loader2 } from "lucide-react";
 import type { TierSlug, TimeSlot } from "@/types";
 import { TIME_SLOT_LABELS } from "@/types";
-import { TIERS, TIER_ORDER } from "@/lib/tier-config";
+import { TIERS } from "@/lib/tier-config";
+
+// UI-visible tiers (merge premium/medium into one "Demande soutenue")
+const UI_TIERS: { slug: TierSlug; label: string }[] = [
+  { slug: "fashion-week", label: "Haute demande (Fashion Week)" },
+  { slug: "medium", label: "Demande soutenue" },
+  { slug: "low", label: "Basse demande" },
+];
 
 interface AdminBulkEditorProps {
   token: string;
@@ -19,6 +26,7 @@ export function AdminBulkEditor({ token, onClose, onSaved }: AdminBulkEditorProp
   const [endDate, setEndDate] = useState("");
   const [weekdays, setWeekdays] = useState<number[]>([]);
   const [tier, setTier] = useState<TierSlug>("medium");
+  const [prices, setPrices] = useState({ ...TIERS["medium"].prices });
   const [isBooked, setIsBooked] = useState(false);
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
@@ -33,6 +41,11 @@ export function AdminBulkEditor({ token, onClose, onSaved }: AdminBulkEditorProp
     { label: "Sam", value: 6 },
     { label: "Dim", value: 7 },
   ];
+
+  function handleTierChange(newTier: TierSlug) {
+    setTier(newTier);
+    setPrices({ ...TIERS[newTier].prices });
+  }
 
   function getDatesInRange(): string[] {
     if (!startDate || !endDate) return [];
@@ -73,9 +86,6 @@ export function AdminBulkEditor({ token, onClose, onSaved }: AdminBulkEditorProp
       return;
     }
 
-    const tierDef = TIERS[tier];
-    const prices = { ...tierDef.prices };
-
     try {
       for (const date of dates) {
         const res = await fetch(`/api/pricing/${date}`, {
@@ -84,7 +94,7 @@ export function AdminBulkEditor({ token, onClose, onSaved }: AdminBulkEditorProp
             "Content-Type": "application/json",
             Authorization: token,
           },
-          body: JSON.stringify({ tier, prices, isBooked, reason: reason || tierDef.label }),
+          body: JSON.stringify({ tier, prices, isBooked, reason: reason || TIERS[tier].label }),
         });
         if (!res.ok) throw new Error(`Erreur pour ${date}`);
       }
@@ -192,35 +202,42 @@ export function AdminBulkEditor({ token, onClose, onSaved }: AdminBulkEditorProp
             <div>
               <label className="mb-1 block text-xs text-muted">Tier</label>
               <div className="flex gap-1">
-                {TIER_ORDER.map((t) => (
+                {UI_TIERS.map(({ slug, label }) => (
                   <button
-                    key={t}
-                    onClick={() => setTier(t)}
+                    key={slug}
+                    onClick={() => handleTierChange(slug)}
                     className="flex-1 border px-1 py-1.5 font-mono text-[10px] uppercase tracking-wider"
                     style={{
-                      borderColor: tier === t ? TIERS[t].color : "var(--border)",
-                      backgroundColor: tier === t ? TIERS[t].color + "20" : "transparent",
-                      color: tier === t ? TIERS[t].color : "var(--muted)",
+                      borderColor: tier === slug ? TIERS[slug].color : "var(--border)",
+                      backgroundColor: tier === slug ? TIERS[slug].color + "20" : "transparent",
+                      color: tier === slug ? TIERS[slug].color : "var(--muted)",
                     }}
                   >
-                    {TIERS[t].label}
+                    {label}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Prices preview */}
-            <div className="border border-border bg-surface p-3">
-              <p className="mb-2 text-xs text-muted">Prix appliqués :</p>
-              {(Object.keys(TIME_SLOT_LABELS) as TimeSlot[]).map((slot) => (
-                <div key={slot} className="flex justify-between text-xs">
-                  <span className="text-muted">{TIME_SLOT_LABELS[slot]}</span>
-                  <span className="font-mono text-foreground">
-                    {TIERS[tier].prices[slot]} EUR
-                  </span>
+            {/* Editable prices */}
+            {(Object.keys(TIME_SLOT_LABELS) as TimeSlot[]).map((slot) => (
+              <div key={slot}>
+                <label className="mb-1 block text-xs text-muted">
+                  {TIME_SLOT_LABELS[slot]}
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={prices[slot]}
+                    onChange={(e) =>
+                      setPrices((p) => ({ ...p, [slot]: parseInt(e.target.value, 10) || 0 }))
+                    }
+                    className="w-full border border-border bg-surface px-3 py-1.5 text-sm text-foreground focus:border-accent focus:outline-none"
+                  />
+                  <span className="text-xs text-muted">EUR HT</span>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
 
             {/* Reason */}
             <input
@@ -241,7 +258,7 @@ export function AdminBulkEditor({ token, onClose, onSaved }: AdminBulkEditorProp
               <span className="text-xs text-foreground">Marquer comme réservé</span>
             </label>
 
-            {error && <p className="text-xs text-tier-premium">{error}</p>}
+            {error && <p className="text-xs text-red-400">{error}</p>}
 
             <button
               onClick={handleApply}

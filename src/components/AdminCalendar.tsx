@@ -280,9 +280,6 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
                         )}
                         style={{ backgroundColor: day.isBooked ? "#404040" : tier.color }}
                       />
-                      {day.isOverride && (
-                        <div className="absolute right-0.5 top-0.5 h-1.5 w-1.5 bg-accent" />
-                      )}
                     </button>
                   );
                 })}
