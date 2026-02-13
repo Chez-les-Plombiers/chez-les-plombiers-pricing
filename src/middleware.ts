@@ -9,27 +9,22 @@ function getRedis(): Redis | null {
 }
 
 async function getCalendarPassword(): Promise<string | null> {
-  // Check KV first (set via admin panel)
   const redis = getRedis();
   if (redis) {
     const kvPassword = await redis.get<string>("pricing:calendar-password");
     if (kvPassword) return kvPassword;
   }
-  // Fallback to env var
   return process.env.CALENDAR_PASSWORD || null;
 }
 
-/**
- * Basic auth middleware protecting ALL public pages.
- * Password stored in KV (editable from admin) with env var fallback.
- */
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip auth for API routes, admin, static assets
+  // Skip auth for API routes, admin, static assets, gate page
   if (
     pathname.startsWith("/api/") ||
     pathname.startsWith("/admin") ||
+    pathname.startsWith("/gate") ||
     pathname.startsWith("/_next/") ||
     pathname.startsWith("/favicon") ||
     pathname.endsWith(".png") ||
@@ -41,24 +36,15 @@ export async function middleware(request: NextRequest) {
   const password = await getCalendarPassword();
   if (!password) return NextResponse.next();
 
-  const authHeader = request.headers.get("authorization");
-  if (authHeader) {
-    const [scheme, encoded] = authHeader.split(" ");
-    if (scheme === "Basic" && encoded) {
-      const decoded = atob(encoded);
-      const [, pwd] = decoded.split(":");
-      if (pwd === password) {
-        return NextResponse.next();
-      }
-    }
+  // Check cookie
+  const cookie = request.cookies.get("clp-access")?.value;
+  if (cookie === password) {
+    return NextResponse.next();
   }
 
-  return new NextResponse("Accès restreint", {
-    status: 401,
-    headers: {
-      "WWW-Authenticate": 'Basic realm="Calendrier Tarifaire"',
-    },
-  });
+  // Redirect to gate page
+  const gateUrl = new URL("/gate", request.url);
+  return NextResponse.redirect(gateUrl);
 }
 
 export const config = {
