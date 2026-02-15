@@ -29,7 +29,18 @@ function deepEqual(a: ScenarioParams, b: ScenarioParams): boolean {
 }
 
 export function ProjectionDashboard() {
-  const [token, setToken] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("admin-token");
+    }
+    return null;
+  });
+
+  function handleLogin(t: string) {
+    sessionStorage.setItem("admin-token", t);
+    setToken(t);
+  }
+
   const [customParams, setCustomParams] = useState<ScenarioParams>({
     ...PRESET_REALISTE,
     name: "Personnalisé",
@@ -64,7 +75,7 @@ export function ProjectionDashboard() {
       <div className="flex min-h-screen flex-col">
         <Navbar />
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6">
-          <AdminLogin onLogin={setToken} />
+          <AdminLogin onLogin={handleLogin} />
         </main>
       </div>
     );

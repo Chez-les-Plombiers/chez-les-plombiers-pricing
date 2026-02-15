@@ -6,14 +6,24 @@ import { AdminLogin } from "@/components/AdminLogin";
 import { AdminCalendar } from "@/components/AdminCalendar";
 
 export function AdminClient() {
-  const [token, setToken] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      return sessionStorage.getItem("admin-token");
+    }
+    return null;
+  });
+
+  function handleLogin(t: string) {
+    sessionStorage.setItem("admin-token", t);
+    setToken(t);
+  }
 
   return (
     <div className="flex min-h-screen flex-col">
       <Navbar />
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6">
         {!token ? (
-          <AdminLogin onLogin={setToken} />
+          <AdminLogin onLogin={handleLogin} />
         ) : (
           <div>
             <div className="mb-8 flex items-center justify-between">
