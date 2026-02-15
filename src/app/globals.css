@@ -58,3 +58,37 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--muted);
 }
+
+/* Projection sliders — brutaliste style */
+.projection-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  background: var(--border);
+  outline: none;
+  cursor: pointer;
+}
+.projection-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: var(--slider-color, var(--accent));
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+.projection-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--slider-color, var(--accent));
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+.projection-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  background: var(--border);
+}
+.projection-slider::-moz-range-track {
+  height: 4px;
+  background: var(--border);
+}

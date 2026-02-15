@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import Link from "next/link";
 import type { DayPricing } from "@/types";
 import { groupByMonth } from "@/lib/pricing-engine";
 import { TIERS } from "@/lib/tier-config";
@@ -8,7 +9,7 @@ import { getMonthNameFR, getDayLetters, getISODayOfWeek, getDayOfMonth } from "@
 import { cn } from "@/lib/utils";
 import { AdminDayEditor } from "./AdminDayEditor";
 import { AdminBulkEditor } from "./AdminBulkEditor";
-import { Layers, BarChart3, MessageSquare, RefreshCw, Lock } from "lucide-react";
+import { Layers, BarChart3, MessageSquare, RefreshCw, Lock, TrendingUp } from "lucide-react";
 
 interface AdminCalendarProps {
   token: string;
@@ -155,6 +156,13 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
           <Lock className="h-3 w-3" />
           Mot de passe
         </button>
+        <Link
+          href="/admin/projections"
+          className="flex items-center gap-2 border border-border px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-muted transition-colors hover:border-accent hover:text-accent"
+        >
+          <TrendingUp className="h-3 w-3" />
+          Projections
+        </Link>
         <button
           onClick={fetchPricing}
           className="flex items-center gap-2 border border-border px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-muted transition-colors hover:border-accent hover:text-accent"
