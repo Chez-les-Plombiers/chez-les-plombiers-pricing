@@ -18,11 +18,11 @@ import {
 
 function deepEqual(a: ScenarioParams, b: ScenarioParams): boolean {
   return JSON.stringify({
-    o: a.tierOccupancy,
+    o: a.monthlyOccupancy,
     p: a.dayPrices,
     b: a.bookingWindowMix,
   }) === JSON.stringify({
-    o: b.tierOccupancy,
+    o: b.monthlyOccupancy,
     p: b.dayPrices,
     b: b.bookingWindowMix,
   });

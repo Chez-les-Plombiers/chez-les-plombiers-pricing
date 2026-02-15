@@ -10,8 +10,8 @@ export type TierKey = "fashion-week" | "premium" | "low";
 export interface ScenarioParams {
   name: string;
   color: string;
-  /** Taux de remplissage par tier (0-1) */
-  tierOccupancy: Record<TierKey, number>;
+  /** Taux de remplissage par mois (0-11, valeurs 0-1) */
+  monthlyOccupancy: Record<number, number>;
   /** Prix par jour de semaine ISO en € (1=Lun..7=Dim) */
   dayPrices: Record<number, number>;
   /** Mix booking window en % (doit sommer à 100) */
@@ -39,14 +39,22 @@ export interface AnnualSummary {
   months: MonthlyProjection[];
 }
 
-// ─── Presets ─────────────────────────────────────────────────────
+// ─── Constants ───────────────────────────────────────────────────
 
-const DEFAULT_DAY_PRICES: Record<number, number> = { ...DAY_OF_WEEK_PRICES };
+export const DEFAULT_DAY_PRICES: Record<number, number> = { ...DAY_OF_WEEK_PRICES };
+
+function makeMonthlyOccupancy(rate: number): Record<number, number> {
+  const m: Record<number, number> = {};
+  for (let i = 0; i < 12; i++) m[i] = rate;
+  return m;
+}
+
+// ─── Presets ─────────────────────────────────────────────────────
 
 export const PRESET_PESSIMISTE: ScenarioParams = {
   name: "Pessimiste",
   color: "#3B82F6",
-  tierOccupancy: { "fashion-week": 0.70, premium: 0.30, low: 0.15 },
+  monthlyOccupancy: makeMonthlyOccupancy(0.25),
   dayPrices: { ...DEFAULT_DAY_PRICES },
   bookingWindowMix: { "early-bird": 15, standard: 35, confirmed: 25, "last-minute": 25 },
 };
@@ -54,7 +62,7 @@ export const PRESET_PESSIMISTE: ScenarioParams = {
 export const PRESET_REALISTE: ScenarioParams = {
   name: "Réaliste",
   color: "#C8A96E",
-  tierOccupancy: { "fashion-week": 0.90, premium: 0.50, low: 0.30 },
+  monthlyOccupancy: makeMonthlyOccupancy(0.40),
   dayPrices: { ...DEFAULT_DAY_PRICES },
   bookingWindowMix: { "early-bird": 20, standard: 40, confirmed: 30, "last-minute": 10 },
 };
@@ -62,7 +70,7 @@ export const PRESET_REALISTE: ScenarioParams = {
 export const PRESET_OPTIMISTE: ScenarioParams = {
   name: "Optimiste",
   color: "#22C55E",
-  tierOccupancy: { "fashion-week": 1.00, premium: 0.75, low: 0.50 },
+  monthlyOccupancy: makeMonthlyOccupancy(0.60),
   dayPrices: { ...DEFAULT_DAY_PRICES },
   bookingWindowMix: { "early-bird": 30, standard: 40, confirmed: 25, "last-minute": 5 },
 };
@@ -97,6 +105,7 @@ export function computeProjection(params: ScenarioParams, year: number = 2026): 
 
   for (let month = 0; month < 12; month++) {
     const dates = getDatesInMonth(year, month);
+    const occupancy = params.monthlyOccupancy[month] ?? 0.40;
     let monthRevenue = 0;
     let monthFW = 0;
     let monthPremium = 0;
@@ -106,11 +115,9 @@ export function computeProjection(params: ScenarioParams, year: number = 2026): 
       const { tier } = getTierForDate(dateStr);
       const tierKey = mapTierToKey(tier);
       const dow = getISODayOfWeek(dateStr);
-      const occupancy = params.tierOccupancy[tierKey];
 
       let dayRevenue: number;
       if (tierKey === "fashion-week") {
-        // FW uses fixed 6000€, not day-of-week price
         dayRevenue = FW_PRICE * weightedBWCoeff * occupancy;
       } else {
         const price = params.dayPrices[dow] ?? DAY_OF_WEEK_PRICES[dow] ?? 2000;

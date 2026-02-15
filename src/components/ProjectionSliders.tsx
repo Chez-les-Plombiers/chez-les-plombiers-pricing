@@ -1,7 +1,9 @@
 "use client";
 
 import type { ScenarioParams } from "@/lib/projection-engine";
-import { PRESETS } from "@/lib/projection-engine";
+import { PRESETS, DEFAULT_DAY_PRICES } from "@/lib/projection-engine";
+import { getMonthNameShortFR } from "@/lib/date-utils";
+import { RotateCcw } from "lucide-react";
 import type { BookingWindow } from "@/types";
 
 interface ProjectionSlidersProps {
@@ -25,10 +27,10 @@ const BW_KEYS: BookingWindow[] = ["early-bird", "standard", "confirmed", "last-m
 
 export function ProjectionSliders({ params, onChange }: ProjectionSlidersProps) {
 
-  function updateOccupancy(key: "fashion-week" | "premium" | "low", value: number) {
+  function updateMonthlyOccupancy(month: number, value: number) {
     onChange({
       ...params,
-      tierOccupancy: { ...params.tierOccupancy, [key]: value },
+      monthlyOccupancy: { ...params.monthlyOccupancy, [month]: value },
     });
   }
 
@@ -39,21 +41,24 @@ export function ProjectionSliders({ params, onChange }: ProjectionSlidersProps) 
     });
   }
 
+  function resetDayPrices() {
+    onChange({
+      ...params,
+      dayPrices: { ...DEFAULT_DAY_PRICES },
+    });
+  }
+
   function updateBWMix(changedKey: BookingWindow, newValue: number) {
-    const oldValue = params.bookingWindowMix[changedKey];
-    const delta = newValue - oldValue;
     const otherKeys = BW_KEYS.filter((k) => k !== changedKey);
     const otherSum = otherKeys.reduce((s, k) => s + params.bookingWindowMix[k], 0);
 
     const newMix = { ...params.bookingWindowMix, [changedKey]: newValue };
 
     if (otherSum > 0) {
-      // Redistribute proportionally
       let remaining = 100 - newValue;
       for (let i = 0; i < otherKeys.length; i++) {
         const k = otherKeys[i];
         if (i === otherKeys.length - 1) {
-          // Last one gets the remainder to ensure exact sum
           newMix[k] = Math.max(0, remaining);
         } else {
           const proportion = params.bookingWindowMix[k] / otherSum;
@@ -62,8 +67,7 @@ export function ProjectionSliders({ params, onChange }: ProjectionSlidersProps) 
           remaining -= adjusted;
         }
       }
-    } else if (delta !== 0) {
-      // All others were 0, distribute evenly
+    } else {
       const each = Math.floor((100 - newValue) / otherKeys.length);
       otherKeys.forEach((k, i) => {
         newMix[k] = i === otherKeys.length - 1 ? 100 - newValue - each * (otherKeys.length - 1) : each;
@@ -76,7 +80,7 @@ export function ProjectionSliders({ params, onChange }: ProjectionSlidersProps) 
   function applyPreset(preset: ScenarioParams) {
     onChange({
       ...params,
-      tierOccupancy: { ...preset.tierOccupancy },
+      monthlyOccupancy: { ...preset.monthlyOccupancy },
       dayPrices: { ...preset.dayPrices },
       bookingWindowMix: { ...preset.bookingWindowMix },
     });
@@ -102,44 +106,40 @@ export function ProjectionSliders({ params, onChange }: ProjectionSlidersProps) 
         </div>
       </div>
 
-      {/* Occupancy */}
+      {/* Monthly occupancy */}
       <div>
         <p className="mb-3 font-mono text-[10px] font-bold uppercase tracking-widest text-accent">
-          Taux de remplissage
+          Taux de remplissage / mois
         </p>
-        <div className="flex flex-col gap-3">
-          <SliderRow
-            label="Fashion Week"
-            value={params.tierOccupancy["fashion-week"]}
-            min={0} max={1} step={0.05}
-            format={(v) => `${Math.round(v * 100)}%`}
-            color="#DC2626"
-            onChange={(v) => updateOccupancy("fashion-week", v)}
-          />
-          <SliderRow
-            label="Demande moyenne"
-            value={params.tierOccupancy.premium}
-            min={0} max={1} step={0.05}
-            format={(v) => `${Math.round(v * 100)}%`}
-            color="#C8A96E"
-            onChange={(v) => updateOccupancy("premium", v)}
-          />
-          <SliderRow
-            label="Demande basse"
-            value={params.tierOccupancy.low}
-            min={0} max={1} step={0.05}
-            format={(v) => `${Math.round(v * 100)}%`}
-            color="#3B82F6"
-            onChange={(v) => updateOccupancy("low", v)}
-          />
+        <div className="flex flex-col gap-2">
+          {Array.from({ length: 12 }, (_, m) => (
+            <SliderRow
+              key={m}
+              label={getMonthNameShortFR(m)}
+              value={params.monthlyOccupancy[m]}
+              min={0} max={1} step={0.05}
+              format={(v) => `${Math.round(v * 100)}%`}
+              onChange={(v) => updateMonthlyOccupancy(m, v)}
+            />
+          ))}
         </div>
       </div>
 
       {/* Day prices */}
       <div>
-        <p className="mb-3 font-mono text-[10px] font-bold uppercase tracking-widest text-accent">
-          Prix par jour
-        </p>
+        <div className="mb-3 flex items-center justify-between">
+          <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-accent">
+            Prix par jour
+          </p>
+          <button
+            onClick={resetDayPrices}
+            className="flex items-center gap-1 text-[10px] text-muted transition-colors hover:text-accent"
+            title="Réinitialiser les prix par défaut"
+          >
+            <RotateCcw className="h-3 w-3" />
+            Réinitialiser
+          </button>
+        </div>
         <div className="flex flex-col gap-3">
           {[1, 2, 3, 4, 5, 6, 7].map((dow) => (
             <SliderRow
@@ -195,7 +195,7 @@ interface SliderRowProps {
 function SliderRow({ label, value, min, max, step, format, color, onChange }: SliderRowProps) {
   return (
     <div className="flex items-center gap-3">
-      <span className="w-28 shrink-0 text-xs text-foreground">{label}</span>
+      <span className="w-20 shrink-0 text-xs text-foreground">{label}</span>
       <input
         type="range"
         min={min}
