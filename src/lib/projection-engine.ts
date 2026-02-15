@@ -12,8 +12,8 @@ export interface ScenarioParams {
   color: string;
   /** Taux de remplissage par tier (0-1) */
   tierOccupancy: Record<TierKey, number>;
-  /** Ajustement multiplicateur par jour de semaine ISO (1=Lun..7=Dim) */
-  priceAdjustment: Record<number, number>;
+  /** Prix par jour de semaine ISO en € (1=Lun..7=Dim) */
+  dayPrices: Record<number, number>;
   /** Mix booking window en % (doit sommer à 100) */
   bookingWindowMix: Record<BookingWindow, number>;
 }
@@ -41,15 +41,13 @@ export interface AnnualSummary {
 
 // ─── Presets ─────────────────────────────────────────────────────
 
-const DEFAULT_PRICE_ADJ: Record<number, number> = {
-  1: 1.0, 2: 1.0, 3: 1.0, 4: 1.0, 5: 1.0, 6: 1.0, 7: 1.0,
-};
+const DEFAULT_DAY_PRICES: Record<number, number> = { ...DAY_OF_WEEK_PRICES };
 
 export const PRESET_PESSIMISTE: ScenarioParams = {
   name: "Pessimiste",
   color: "#3B82F6",
   tierOccupancy: { "fashion-week": 0.70, premium: 0.30, low: 0.15 },
-  priceAdjustment: { ...DEFAULT_PRICE_ADJ },
+  dayPrices: { ...DEFAULT_DAY_PRICES },
   bookingWindowMix: { "early-bird": 15, standard: 35, confirmed: 25, "last-minute": 25 },
 };
 
@@ -57,7 +55,7 @@ export const PRESET_REALISTE: ScenarioParams = {
   name: "Réaliste",
   color: "#C8A96E",
   tierOccupancy: { "fashion-week": 0.90, premium: 0.50, low: 0.30 },
-  priceAdjustment: { ...DEFAULT_PRICE_ADJ },
+  dayPrices: { ...DEFAULT_DAY_PRICES },
   bookingWindowMix: { "early-bird": 20, standard: 40, confirmed: 30, "last-minute": 10 },
 };
 
@@ -65,7 +63,7 @@ export const PRESET_OPTIMISTE: ScenarioParams = {
   name: "Optimiste",
   color: "#22C55E",
   tierOccupancy: { "fashion-week": 1.00, premium: 0.75, low: 0.50 },
-  priceAdjustment: { ...DEFAULT_PRICE_ADJ },
+  dayPrices: { ...DEFAULT_DAY_PRICES },
   bookingWindowMix: { "early-bird": 30, standard: 40, confirmed: 25, "last-minute": 5 },
 };
 
@@ -109,15 +107,14 @@ export function computeProjection(params: ScenarioParams, year: number = 2026): 
       const tierKey = mapTierToKey(tier);
       const dow = getISODayOfWeek(dateStr);
       const occupancy = params.tierOccupancy[tierKey];
-      const priceAdj = params.priceAdjustment[dow] ?? 1.0;
 
       let dayRevenue: number;
       if (tierKey === "fashion-week") {
-        // FW uses fixed 6000€, no day-of-week price adjustment
+        // FW uses fixed 6000€, not day-of-week price
         dayRevenue = FW_PRICE * weightedBWCoeff * occupancy;
       } else {
-        const basePrice = DAY_OF_WEEK_PRICES[dow] ?? 2000;
-        dayRevenue = basePrice * priceAdj * weightedBWCoeff * occupancy;
+        const price = params.dayPrices[dow] ?? DAY_OF_WEEK_PRICES[dow] ?? 2000;
+        dayRevenue = price * weightedBWCoeff * occupancy;
       }
 
       monthRevenue += dayRevenue;

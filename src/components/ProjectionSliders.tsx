@@ -32,10 +32,10 @@ export function ProjectionSliders({ params, onChange }: ProjectionSlidersProps) 
     });
   }
 
-  function updatePriceAdj(dow: number, value: number) {
+  function updateDayPrice(dow: number, value: number) {
     onChange({
       ...params,
-      priceAdjustment: { ...params.priceAdjustment, [dow]: value },
+      dayPrices: { ...params.dayPrices, [dow]: value },
     });
   }
 
@@ -77,7 +77,7 @@ export function ProjectionSliders({ params, onChange }: ProjectionSlidersProps) 
     onChange({
       ...params,
       tierOccupancy: { ...preset.tierOccupancy },
-      priceAdjustment: { ...preset.priceAdjustment },
+      dayPrices: { ...preset.dayPrices },
       bookingWindowMix: { ...preset.bookingWindowMix },
     });
   }
@@ -135,20 +135,20 @@ export function ProjectionSliders({ params, onChange }: ProjectionSlidersProps) 
         </div>
       </div>
 
-      {/* Price adjustments */}
+      {/* Day prices */}
       <div>
         <p className="mb-3 font-mono text-[10px] font-bold uppercase tracking-widest text-accent">
-          Ajustement prix / jour
+          Prix par jour
         </p>
         <div className="flex flex-col gap-3">
           {[1, 2, 3, 4, 5, 6, 7].map((dow) => (
             <SliderRow
               key={dow}
               label={DOW_LABELS[dow]}
-              value={params.priceAdjustment[dow]}
-              min={0.5} max={2.0} step={0.05}
-              format={(v) => `×${v.toFixed(2)}`}
-              onChange={(v) => updatePriceAdj(dow, v)}
+              value={params.dayPrices[dow]}
+              min={500} max={8000} step={100}
+              format={(v) => `${v.toLocaleString("fr-FR")}€`}
+              onChange={(v) => updateDayPrice(dow, v)}
             />
           ))}
         </div>
