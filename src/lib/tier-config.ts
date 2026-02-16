@@ -54,6 +54,6 @@ export const HALF_DAY_RATIO = 0.6;
 export const BOOKING_WINDOWS: Record<BookingWindow, { label: string; coeff: number }> = {
   "early-bird": { label: "Early Bird (-15%)", coeff: 0.85 },
   standard: { label: "Tarif standard", coeff: 1.0 },
-  confirmed: { label: "Tarif confirmé (+10%)", coeff: 1.1 },
+  confirmed: { label: "Tarif confirmé", coeff: 1.0 },
   "last-minute": { label: "Last Minute (-25%)", coeff: 0.75 },
 };
