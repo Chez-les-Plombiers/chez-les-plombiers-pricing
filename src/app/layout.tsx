@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { Inter, Space_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -27,6 +28,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr">
+      <head>
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-P14K1RH61R"
+          strategy="afterInteractive"
+        />
+        <Script id="ga4-init" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-P14K1RH61R');
+          `}
+        </Script>
+      </head>
       <body className={`${inter.variable} ${spaceMono.variable} antialiased`}>
         {children}
       </body>
