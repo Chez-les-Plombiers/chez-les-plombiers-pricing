@@ -4,6 +4,7 @@ import type { DayPricing } from "@/types";
 import { TIERS } from "@/lib/tier-config";
 import { getDayOfMonth } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
+import { trackEvent } from "@/lib/analytics";
 
 interface DayCellProps {
   day: DayPricing;
@@ -20,7 +21,15 @@ export function DayCell({ day, today, onClick }: DayCellProps) {
 
   return (
     <button
-      onClick={() => onClick(day)}
+      onClick={() => {
+        trackEvent("calendar_day_click", {
+          date: day.date,
+          tier: day.tier,
+          price: day.prices["journee-complete"],
+          booking_window: day.bookingWindow,
+        });
+        onClick(day);
+      }}
       disabled={isDisabled}
       aria-label={`${dayNum} — ${tier.label}${fullyBooked ? " (réservé)" : ""}${isPast ? " (passé)" : ""}`}
       className={cn(

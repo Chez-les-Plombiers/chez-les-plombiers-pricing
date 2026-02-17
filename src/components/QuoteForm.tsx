@@ -5,6 +5,7 @@ import { ArrowLeft, Send, Loader2 } from "lucide-react";
 import type { DayPricing, TimeSlot } from "@/types";
 import { TIME_SLOT_LABELS } from "@/types";
 import { formatDateFR, formatPrice } from "@/lib/date-utils";
+import { trackEvent } from "@/lib/analytics";
 
 interface QuoteFormProps {
   day: DayPricing;
@@ -60,6 +61,13 @@ export function QuoteForm({ day, timeSlot, onBack, onSuccess }: QuoteFormProps) 
         throw new Error(data.error || "Erreur lors de l'envoi");
       }
 
+      trackEvent("quote_form_submit", {
+        date: day.date,
+        time_slot: timeSlot,
+        event_type: payload.eventType,
+        price: day.prices[timeSlot],
+        guest_count: payload.guestCount,
+      });
       setSuccess(true);
       setTimeout(onSuccess, 2000);
     } catch (err) {

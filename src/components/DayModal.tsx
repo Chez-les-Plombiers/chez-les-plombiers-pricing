@@ -9,6 +9,7 @@ import { TIERS } from "@/lib/tier-config";
 import { formatDateFR, formatDayOfWeekFR, formatPrice } from "@/lib/date-utils";
 import { SaveBadge } from "./SaveBadge";
 import { QuoteForm } from "./QuoteForm";
+import { trackEvent } from "@/lib/analytics";
 
 interface DayModalProps {
   day: DayPricing;
@@ -21,6 +22,11 @@ export function DayModal({ day, onClose }: DayModalProps) {
   const tier = TIERS[day.tier];
 
   const handleQuoteClick = (slot: TimeSlot) => {
+    trackEvent("quote_form_open", {
+      date: day.date,
+      time_slot: slot,
+      price: day.prices[slot],
+    });
     setSelectedSlot(slot);
     setShowQuoteForm(true);
   };
