@@ -19,6 +19,14 @@ export const metadata: Metadata = {
   description:
     "Calendrier de prix dynamique pour la location du lieu événementiel Chez Les Plombiers, 39 rue des Bourdonnais, Paris 1er.",
   robots: { index: false, follow: false },
+  openGraph: {
+    title: "Tarifs Location — Chez Les Plombiers",
+    description:
+      "Consultez les tarifs et disponibilités pour la location de notre lieu événementiel de 200 m² au cœur de Paris.",
+    siteName: "Chez Les Plombiers",
+    locale: "fr_FR",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
