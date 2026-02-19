@@ -42,7 +42,7 @@ export const DAY_OF_WEEK_PRICES: Record<number, number> = {
   4: 4000, // Jeudi
   5: 3000, // Vendredi
   6: 2000, // Samedi
-  7: 1000, // Dimanche
+  7: 2000, // Dimanche
 };
 
 export const FW_PRICE = 6000;
