@@ -38,7 +38,8 @@ src/
 │       ├── ical/                   # GET: flux .ics
 │       ├── analytics/              # GET/POST: vues par jour
 │       ├── webhook/pipedrive/      # POST: webhook Pipedrive (deal stage change → KV)
-│       └── webhook/calendly/      # POST: webhook Calendly (invitee.created → Pipedrive deal)
+│       ├── webhook/calendly/      # POST: webhook Calendly (invitee.created → Pipedrive deal)
+│       └── webhook/email-lead/    # POST: webhook générique email (n8n → Pipedrive deal, auth X-Webhook-Secret)
 ├── middleware.ts                    # Auth cookie gate (redirige vers /gate si pas de cookie)
 ├── components/
 │   ├── CalendarHeatmap.tsx          # Grille annuelle 12 mois
@@ -143,8 +144,17 @@ Fashion Week > Fériés/Ponts/Vacances > Jour de la semaine
 - **Webhook Calendly :** invitee.created → `POST /api/webhook/calendly`
   - Fetch event details via Calendly API (date/heure visite)
   - Crée Person + Deal stage 2 + Note épinglée (source "Calendly")
+- **Webhook email-lead :** `POST /api/webhook/email-lead` (auth `X-Webhook-Secret: ADMIN_PASSWORD`)
+  - Endpoint générique pour leads parsés par n8n (Kactus, etc.)
+  - Payload : `{ source, name, email, phone, company, date, eventType, guestCount, message }`
+  - Crée Person + Org + Deal stage 1 + Note épinglée
+  - Workflow n8n prêt : `n8n-workflows/kactus-email-to-pipedrive.json`
 - **Devis :** formulaire → stocké KV + envoi Pipedrive (await, avec error logging)
 - **MCP server :** `@iamsamuelfraga/mcp-pipedrive` (stdio, npx) — configuré dans Claude Code pour ce projet, env var `PIPEDRIVE_API_TOKEN`
+
+## Formulaire devis (QuoteForm)
+- **Types d'évènement :** Défilé/Fashion show, Lancement produit, Cocktail/Soirée, Petit-déjeuner, Tournage/Shooting, Conférence/Séminaire, Formation, Exposition, Pop-up store, Autre
+- **Capacité max :** 200 invités
 
 ## Jours passés
 Les jours antérieurs à aujourd'hui sont grisés et non cliquables sur le calendrier public.
