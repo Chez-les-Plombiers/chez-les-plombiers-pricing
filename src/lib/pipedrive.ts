@@ -70,7 +70,9 @@ export async function sendToPipedrive(quote: QuoteRequest): Promise<void> {
   const dateFr = `${day}/${month}/${year}`;
 
   // 5. Create Deal with price + custom fields
-  const dealTitle = `CLP — ${dateFr} — ${quote.firstName} ${quote.lastName} — ${quote.eventType}`;
+  const dealTitle = quote.company
+    ? `${quote.company} — ${dateFr} — ${quote.eventType}`
+    : `${dateFr} — ${quote.eventType}`;
   const dealBody: Record<string, unknown> = {
     title: dealTitle,
     value: price,

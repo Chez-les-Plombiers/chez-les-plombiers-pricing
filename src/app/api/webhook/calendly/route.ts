@@ -104,8 +104,8 @@ export async function POST(request: Request) {
 
     // 3. Create Deal in stage 2 "Visite Planifiée"
     const dealTitle = dateFr
-      ? `CLP — ${dateFr} — ${name} — ${eventName}`
-      : `CLP — ${name} — ${eventName}`;
+      ? `${dateFr} — ${eventName}`
+      : eventName;
 
     const dealBody: Record<string, unknown> = {
       title: dealTitle,

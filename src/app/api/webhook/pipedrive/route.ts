@@ -11,7 +11,7 @@ const LOST_STATUS = "lost";
 
 /**
  * Extract the event date from a deal title.
- * Expected format: "CLP — DD/MM/YYYY — Name — Type"
+ * Matches DD/MM/YYYY anywhere in the title.
  * Returns YYYY-MM-DD or null.
  */
 function extractDateFromTitle(title: string): string | null {
