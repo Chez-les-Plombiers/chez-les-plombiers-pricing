@@ -37,7 +37,8 @@ src/
 │       ├── quote/                  # GET: liste devis (admin), POST: créer devis → KV + Pipedrive
 │       ├── ical/                   # GET: flux .ics
 │       ├── analytics/              # GET/POST: vues par jour
-│       └── webhook/pipedrive/      # POST: webhook Pipedrive (deal stage change)
+│       ├── webhook/pipedrive/      # POST: webhook Pipedrive (deal stage change → KV)
+│       └── webhook/calendly/      # POST: webhook Calendly (invitee.created → Pipedrive deal)
 ├── middleware.ts                    # Auth cookie gate (redirige vers /gate si pas de cookie)
 ├── components/
 │   ├── CalendarHeatmap.tsx          # Grille annuelle 12 mois
@@ -70,6 +71,7 @@ CALENDAR_PASSWORD=xxx        # Code d'accès calendrier public (fallback si KV v
 KV_REST_API_URL=xxx          # Upstash Redis (auto-ajouté par Vercel)
 KV_REST_API_TOKEN=xxx        # Upstash Redis (auto-ajouté par Vercel)
 PIPEDRIVE_API_TOKEN=xxx      # API token Pipedrive CRM
+CALENDLY_API_TOKEN=xxx       # Personal Access Token Calendly (user: chezlesplombiers)
 ```
 
 ## Analytics
@@ -125,18 +127,22 @@ Fashion Week > Fériés/Ponts/Vacances > Jour de la semaine
 - **API :** `https://api.pipedrive.com/v1` — auth via `?api_token=xxx`
 - **Pipeline :** "Pipeline Principal" (ID: 1)
 - **Stages :** 1=Nouvelle demande, 2=Visite Planifiée, 3=Visite faite, 4=Devis envoyé, 5=Devis Relancé, 7=Demande Confirmée, 6=Paiement reçu
-- **Création deal :** Person → (optionnel) Organization → Deal (avec prix + champs custom) en stage 1 + Note épinglée
-- **Titre deal :** `CLP — DD/MM/YYYY — Prénom Nom — TypeEvent` (la date est parsée par le webhook)
+- **Création deal (calendrier):** Person → (optionnel) Organization → Deal (stage 1) + Note épinglée
+- **Création deal (Calendly):** Person → Deal (stage 2 "Visite Planifiée") + Note épinglée
+- **Titre deal :** `Entreprise — DD/MM/YYYY — TypeEvent` (sans entreprise : `DD/MM/YYYY — TypeEvent`). Le contact s'affiche automatiquement en ligne 2 via person_id.
 - **Valeur deal :** prix HT calculé par le pricing engine (date + créneau + booking window + overrides)
 - **Champs custom deal :**
   - `05834ee04351a62a91908c3b409ed21b388cf09e` = Nombre d'invités (double)
   - `b077edaa62f510022521226b4a9631e90f1b04c4` = Type d'évènement (varchar)
-  - `71ec4d9da53a2578ac16a356018cddf3cf823a24` = Source (varchar, "Calendrier tarifaire")
+  - `71ec4d9da53a2578ac16a356018cddf3cf823a24` = Source (varchar : "Calendrier tarifaire" ou "Calendly")
 - **Note épinglée :** date, créneau, prix HT, fenêtre de réservation, type, invités, entreprise, message
-- **Webhook :** deal updated → `POST /api/webhook/pipedrive`
+- **Webhook Pipedrive :** deal updated → `POST /api/webhook/pipedrive`
   - Stage 7 ou 6 → marque la date comme réservée dans KV
   - Deal lost → libère la date dans KV
   - Retour d'un stage booked → libère la date
+- **Webhook Calendly :** invitee.created → `POST /api/webhook/calendly`
+  - Fetch event details via Calendly API (date/heure visite)
+  - Crée Person + Deal stage 2 + Note épinglée (source "Calendly")
 - **Devis :** formulaire → stocké KV + envoi Pipedrive (await, avec error logging)
 - **MCP server :** `@iamsamuelfraga/mcp-pipedrive` (stdio, npx) — configuré dans Claude Code pour ce projet, env var `PIPEDRIVE_API_TOKEN`
 
