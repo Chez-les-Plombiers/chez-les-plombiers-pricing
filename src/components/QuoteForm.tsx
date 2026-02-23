@@ -18,8 +18,10 @@ const EVENT_TYPES = [
   "Défilé / Fashion show",
   "Lancement produit",
   "Cocktail / Soirée",
+  "Petit-déjeuner",
   "Tournage / Shooting",
   "Conférence / Séminaire",
+  "Formation",
   "Exposition",
   "Pop-up store",
   "Autre",
@@ -149,7 +151,7 @@ export function QuoteForm({ day, timeSlot, onBack, onSuccess }: QuoteFormProps) 
             name="guestCount"
             type="number"
             min="1"
-            max="500"
+            max="200"
             required
             placeholder="Nb invités *"
             className="border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
