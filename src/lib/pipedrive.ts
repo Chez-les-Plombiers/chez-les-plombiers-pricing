@@ -1,5 +1,7 @@
 import type { QuoteRequest } from "@/types";
 import { TIME_SLOT_LABELS } from "@/types";
+import { computeDayPricing } from "./pricing-engine";
+import { getAllOverrides } from "./kv";
 
 const API_BASE = "https://api.pipedrive.com/v1";
 const PIPELINE_ID = 1; // "Pipeline Principal"
@@ -7,7 +9,7 @@ const STAGE_NEW = 1; // "Nouvelle demande"
 
 /**
  * Send a quote request to Pipedrive CRM.
- * Creates: Person → (optional) Organization → Deal + Note.
+ * Creates: Person → (optional) Organization → Deal (with price) + Note.
  * Fails silently — the quote is always saved locally in KV as backup.
  */
 export async function sendToPipedrive(quote: QuoteRequest): Promise<void> {
@@ -51,14 +53,23 @@ export async function sendToPipedrive(quote: QuoteRequest): Promise<void> {
     }
   }
 
-  // 3. Format date for title: YYYY-MM-DD → DD/MM/YYYY
+  // 3. Compute price for this date + time slot
+  const today = new Date().toISOString().split("T")[0];
+  const overrides = await getAllOverrides();
+  const override = overrides[quote.date];
+  const pricing = computeDayPricing(quote.date, today, override ?? undefined);
+  const price = pricing.prices[quote.timeSlot];
+
+  // 4. Format date for title: YYYY-MM-DD → DD/MM/YYYY
   const [year, month, day] = quote.date.split("-");
   const dateFr = `${day}/${month}/${year}`;
 
-  // 4. Create Deal
+  // 5. Create Deal with price
   const dealTitle = `CLP — ${dateFr} — ${quote.firstName} ${quote.lastName} — ${quote.eventType}`;
   const dealBody: Record<string, unknown> = {
     title: dealTitle,
+    value: price,
+    currency: "EUR",
     person_id: personId,
     pipeline_id: PIPELINE_ID,
     stage_id: STAGE_NEW,
@@ -80,12 +91,15 @@ export async function sendToPipedrive(quote: QuoteRequest): Promise<void> {
   const dealData = await dealRes.json();
   const dealId = dealData.data?.id;
 
-  // 5. Add detailed note to the deal
+  // 6. Add detailed note to the deal
+  const priceFormatted = new Intl.NumberFormat("fr-FR").format(price);
   const noteContent = [
     `<b>Demande de devis — Calendrier tarifaire</b>`,
     ``,
     `<b>Date :</b> ${dateFr}`,
     `<b>Créneau :</b> ${TIME_SLOT_LABELS[quote.timeSlot]}`,
+    `<b>Prix HT :</b> ${priceFormatted} €`,
+    `<b>Fenêtre :</b> ${pricing.bookingWindowLabel}`,
     `<b>Type d'évènement :</b> ${quote.eventType}`,
     `<b>Nombre d'invités :</b> ${quote.guestCount}`,
     quote.company ? `<b>Entreprise :</b> ${quote.company}` : "",
