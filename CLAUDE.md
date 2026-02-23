@@ -125,13 +125,19 @@ Fashion Week > Fériés/Ponts/Vacances > Jour de la semaine
 - **API :** `https://api.pipedrive.com/v1` — auth via `?api_token=xxx`
 - **Pipeline :** "Pipeline Principal" (ID: 1)
 - **Stages :** 1=Nouvelle demande, 2=Visite Planifiée, 3=Visite faite, 4=Devis envoyé, 5=Devis Relancé, 7=Demande Confirmée, 6=Paiement reçu
-- **Création deal :** Person → (optionnel) Organization → Deal en stage 1 + Note épinglée
+- **Création deal :** Person → (optionnel) Organization → Deal (avec prix + champs custom) en stage 1 + Note épinglée
 - **Titre deal :** `CLP — DD/MM/YYYY — Prénom Nom — TypeEvent` (la date est parsée par le webhook)
+- **Valeur deal :** prix HT calculé par le pricing engine (date + créneau + booking window + overrides)
+- **Champs custom deal :**
+  - `05834ee04351a62a91908c3b409ed21b388cf09e` = Nombre d'invités (double)
+  - `b077edaa62f510022521226b4a9631e90f1b04c4` = Type d'évènement (varchar)
+  - `71ec4d9da53a2578ac16a356018cddf3cf823a24` = Source (varchar, "Calendrier tarifaire")
+- **Note épinglée :** date, créneau, prix HT, fenêtre de réservation, type, invités, entreprise, message
 - **Webhook :** deal updated → `POST /api/webhook/pipedrive`
   - Stage 7 ou 6 → marque la date comme réservée dans KV
   - Deal lost → libère la date dans KV
   - Retour d'un stage booked → libère la date
-- **Devis :** formulaire → stocké KV + envoi Pipedrive (non-bloquant, fail silencieux)
+- **Devis :** formulaire → stocké KV + envoi Pipedrive (await, avec error logging)
 - **MCP server :** `@iamsamuelfraga/mcp-pipedrive` (stdio, npx) — configuré dans Claude Code pour ce projet, env var `PIPEDRIVE_API_TOKEN`
 
 ## Jours passés
