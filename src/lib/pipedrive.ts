@@ -7,6 +7,11 @@ const API_BASE = "https://api.pipedrive.com/v1";
 const PIPELINE_ID = 1; // "Pipeline Principal"
 const STAGE_NEW = 1; // "Nouvelle demande"
 
+// Custom deal field keys (created in Pipedrive)
+const FIELD_GUESTS = "05834ee04351a62a91908c3b409ed21b388cf09e";
+const FIELD_EVENT_TYPE = "b077edaa62f510022521226b4a9631e90f1b04c4";
+const FIELD_SOURCE = "71ec4d9da53a2578ac16a356018cddf3cf823a24";
+
 /**
  * Send a quote request to Pipedrive CRM.
  * Creates: Person → (optional) Organization → Deal (with price) + Note.
@@ -64,7 +69,7 @@ export async function sendToPipedrive(quote: QuoteRequest): Promise<void> {
   const [year, month, day] = quote.date.split("-");
   const dateFr = `${day}/${month}/${year}`;
 
-  // 5. Create Deal with price
+  // 5. Create Deal with price + custom fields
   const dealTitle = `CLP — ${dateFr} — ${quote.firstName} ${quote.lastName} — ${quote.eventType}`;
   const dealBody: Record<string, unknown> = {
     title: dealTitle,
@@ -73,6 +78,9 @@ export async function sendToPipedrive(quote: QuoteRequest): Promise<void> {
     person_id: personId,
     pipeline_id: PIPELINE_ID,
     stage_id: STAGE_NEW,
+    [FIELD_GUESTS]: quote.guestCount,
+    [FIELD_EVENT_TYPE]: quote.eventType,
+    [FIELD_SOURCE]: "Calendrier tarifaire",
   };
   if (orgId) dealBody.org_id = orgId;
 
