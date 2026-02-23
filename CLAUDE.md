@@ -132,6 +132,7 @@ Fashion Week > Fériés/Ponts/Vacances > Jour de la semaine
   - Deal lost → libère la date dans KV
   - Retour d'un stage booked → libère la date
 - **Devis :** formulaire → stocké KV + envoi Pipedrive (non-bloquant, fail silencieux)
+- **MCP server :** `@iamsamuelfraga/mcp-pipedrive` (stdio, npx) — configuré dans Claude Code pour ce projet, env var `PIPEDRIVE_API_TOKEN`
 
 ## Jours passés
 Les jours antérieurs à aujourd'hui sont grisés et non cliquables sur le calendrier public.
