@@ -58,10 +58,12 @@ export async function POST(request: Request) {
     // Store in KV
     await addQuote(quote);
 
-    // Send to Pipedrive CRM (non-blocking)
-    sendToPipedrive(quote).catch(() => {
-      // Silently fail — quote is already saved in KV
-    });
+    // Send to Pipedrive CRM
+    try {
+      await sendToPipedrive(quote);
+    } catch (err) {
+      console.error("[Pipedrive] Failed to create deal:", err instanceof Error ? err.message : err);
+    }
 
     return NextResponse.json({ success: true, id: quote.id });
   } catch {
