@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { addQuote, getAllQuotes } from "@/lib/kv";
-import { sendToBookingShake } from "@/lib/bookingshake";
+import { sendToPipedrive } from "@/lib/pipedrive";
 import type { QuoteRequest } from "@/types";
 
 export async function GET(request: Request) {
@@ -58,8 +58,8 @@ export async function POST(request: Request) {
     // Store in KV
     await addQuote(quote);
 
-    // Try to send to BookingShake (non-blocking)
-    sendToBookingShake(quote).catch(() => {
+    // Send to Pipedrive CRM (non-blocking)
+    sendToPipedrive(quote).catch(() => {
       // Silently fail — quote is already saved in KV
     });
 

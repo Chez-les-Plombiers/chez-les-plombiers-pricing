@@ -10,7 +10,7 @@ Webapp calendrier affichant les prix de location par jour pour un lieu événeme
 - **Next.js 16** + App Router + TypeScript strict + React 19
 - **Tailwind CSS v4** (`@theme inline` dans globals.css)
 - **Upstash Redis** pour overrides de prix, demandes de devis, analytics
-- **BookingShake API** (`https://api.bookingshake.io/api`) pour sync CRM
+- **Pipedrive API** (`https://api.pipedrive.com/v1`) pour sync CRM
 - **Vercel** hosting, auto-deploy sur push main
 
 ## Commandes
@@ -34,10 +34,10 @@ src/
 │       ├── pricing/                # GET: pricing annuel, POST: créer override
 │       ├── pricing/[date]/         # PUT/DELETE: modifier/supprimer override
 │       ├── availability/           # GET/PUT: jours réservés
-│       ├── quote/                  # GET: liste devis (admin), POST: créer devis → KV + BookingShake
+│       ├── quote/                  # GET: liste devis (admin), POST: créer devis → KV + Pipedrive
 │       ├── ical/                   # GET: flux .ics
 │       ├── analytics/              # GET/POST: vues par jour
-│       └── webhook/bookingshake/   # POST: webhook BookingShake
+│       └── webhook/pipedrive/      # POST: webhook Pipedrive (deal stage change)
 ├── middleware.ts                    # Auth cookie gate (redirige vers /gate si pas de cookie)
 ├── components/
 │   ├── CalendarHeatmap.tsx          # Grille annuelle 12 mois
@@ -56,7 +56,7 @@ src/
 │   ├── calendar-data.ts            # Dates 2026 : FW, fériés, vacances, ponts
 │   ├── tier-config.ts              # 4 tiers (visual), prix par jour de semaine, booking windows
 │   ├── kv.ts                       # Wrapper Upstash Redis (overrides, devis, analytics, calendar password)
-│   ├── bookingshake.ts             # Appels HTTP vers BookingShake CRM
+│   ├── pipedrive.ts               # Appels HTTP vers Pipedrive CRM (Person + Org + Deal + Note)
 │   ├── date-utils.ts               # Formatage dates FR
 │   ├── ical-generator.ts           # Générateur format iCal
 │   └── utils.ts                    # cn() — clsx + tailwind-merge
@@ -69,8 +69,12 @@ ADMIN_PASSWORD=xxx
 CALENDAR_PASSWORD=xxx        # Code d'accès calendrier public (fallback si KV vide)
 KV_REST_API_URL=xxx          # Upstash Redis (auto-ajouté par Vercel)
 KV_REST_API_TOKEN=xxx        # Upstash Redis (auto-ajouté par Vercel)
-BOOKINGSHAKE_API_KEY=xxx     # f556ae48-9ba7-4de3-bd57-2a25876a9588
+PIPEDRIVE_API_TOKEN=xxx      # API token Pipedrive CRM
 ```
+
+## Analytics
+- **GA4**: G-LHBRR8HRC3 (data stream "Pricing Calendar", même propriété que le site principal)
+- **Clarity**: vju7iukwc9 (raw `<script>` dans `<head>`, pas `<Script>` Next.js)
 
 ## Yield Management — Pricing Dynamique
 
@@ -117,17 +121,17 @@ Fashion Week > Fériés/Ponts/Vacances > Jour de la semaine
 - Code modifiable depuis l'admin (panneau "Mot de passe")
 - Stocké en KV (`pricing:calendar-password`), fallback env var `CALENDAR_PASSWORD`
 
-## BookingShake
-- **API :** `https://api.bookingshake.io/api` — auth `Bearer <API_KEY>`
-- **Créer événement :** `POST /events/create` — date DD-MM-YYYY, pax en string
-- **Source :** `source_id: "D1uUppihf0ACPSs6o9pV"` = "Site internet"
-- **Espace :** `space_id: "2F6ElGOfOrVpoI3iLdfn"` = "Chez les Plombiers"
-- **Statuts confirmés :** Validé, En cours, Option posée, Derniers détails, Attente paiement
-- **Statuts annulés :** Perdu (dispo/budget/concurrence/autre), Refusé, Clôturé
-- **Webhook :** configuré sur "Compte mis à jour" → `POST /api/webhook/bookingshake`
-- **Limitation :** pas de webhook sur réservations, pas de GET events — demande envoyée à BookingShake pour ajout
-- **MCP server :** `/Users/fred/bookingshake-mcp-server/` (stdio, node)
-- **Devis :** formulaire → stocké KV + envoi BookingShake (non-bloquant, fail silencieux)
+## Pipedrive CRM
+- **API :** `https://api.pipedrive.com/v1` — auth via `?api_token=xxx`
+- **Pipeline :** "Pipeline Principal" (ID: 1)
+- **Stages :** 1=Nouvelle demande, 2=Visite Planifiée, 3=Visite faite, 4=Devis envoyé, 5=Devis Relancé, 7=Demande Confirmée, 6=Paiement reçu
+- **Création deal :** Person → (optionnel) Organization → Deal en stage 1 + Note épinglée
+- **Titre deal :** `CLP — DD/MM/YYYY — Prénom Nom — TypeEvent` (la date est parsée par le webhook)
+- **Webhook :** deal updated → `POST /api/webhook/pipedrive`
+  - Stage 7 ou 6 → marque la date comme réservée dans KV
+  - Deal lost → libère la date dans KV
+  - Retour d'un stage booked → libère la date
+- **Devis :** formulaire → stocké KV + envoi Pipedrive (non-bloquant, fail silencieux)
 
 ## Jours passés
 Les jours antérieurs à aujourd'hui sont grisés et non cliquables sur le calendrier public.
