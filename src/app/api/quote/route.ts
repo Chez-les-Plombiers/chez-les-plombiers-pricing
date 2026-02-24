@@ -49,6 +49,8 @@ export async function POST(request: Request) {
       email: body.email,
       phone: body.phone,
       company: body.company || undefined,
+      siret: body.siret || undefined,
+      numberOfDays: parseInt(body.numberOfDays, 10) || 1,
       guestCount: parseInt(body.guestCount, 10),
       eventType: body.eventType,
       message: body.message || undefined,

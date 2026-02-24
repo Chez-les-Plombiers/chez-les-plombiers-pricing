@@ -47,6 +47,8 @@ export interface QuoteRequest {
   email: string;
   phone: string;
   company?: string;
+  siret?: string;
+  numberOfDays: number;
   guestCount: number;
   eventType: string;
   message?: string;

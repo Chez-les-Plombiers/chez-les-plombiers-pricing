@@ -13,10 +13,11 @@ import { trackEvent } from "@/lib/analytics";
 
 interface DayModalProps {
   day: DayPricing;
+  allDays: DayPricing[];
   onClose: () => void;
 }
 
-export function DayModal({ day, onClose }: DayModalProps) {
+export function DayModal({ day, allDays, onClose }: DayModalProps) {
   const [showQuoteForm, setShowQuoteForm] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const tier = TIERS[day.tier];
@@ -121,6 +122,7 @@ export function DayModal({ day, onClose }: DayModalProps) {
           ) : (
             <QuoteForm
               day={day}
+              allDays={allDays}
               timeSlot={selectedSlot!}
               onBack={() => setShowQuoteForm(false)}
               onSuccess={onClose}

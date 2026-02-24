@@ -47,10 +47,12 @@ export async function sendToPipedrive(quote: QuoteRequest): Promise<void> {
   // 2. Create Organization (if company provided)
   let orgId: number | undefined;
   if (quote.company) {
+    const orgBody: Record<string, unknown> = { name: quote.company };
+    if (quote.siret) orgBody.address = `SIRET: ${quote.siret}`;
     const orgRes = await fetch(`${API_BASE}/organizations?${authParam}`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ name: quote.company }),
+      body: JSON.stringify(orgBody),
     });
     if (orgRes.ok) {
       const orgData = await orgRes.json();
@@ -58,24 +60,40 @@ export async function sendToPipedrive(quote: QuoteRequest): Promise<void> {
     }
   }
 
-  // 3. Compute price for this date + time slot
+  // 3. Compute price for all requested days
   const today = new Date().toISOString().split("T")[0];
   const overrides = await getAllOverrides();
-  const override = overrides[quote.date];
-  const pricing = computeDayPricing(quote.date, today, override ?? undefined);
-  const price = pricing.prices[quote.timeSlot];
+  const numDays = quote.numberOfDays || 1;
+  const dayPricings: { date: string; dateFr: string; price: number; windowLabel: string }[] = [];
+  for (let i = 0; i < numDays; i++) {
+    const d = new Date(quote.date + "T00:00:00");
+    d.setDate(d.getDate() + i);
+    const dateStr = d.toISOString().split("T")[0];
+    const ov = overrides[dateStr];
+    const dp = computeDayPricing(dateStr, today, ov ?? undefined);
+    const [y, m, dd] = dateStr.split("-");
+    dayPricings.push({
+      date: dateStr,
+      dateFr: `${dd}/${m}/${y}`,
+      price: dp.prices[quote.timeSlot],
+      windowLabel: dp.bookingWindowLabel,
+    });
+  }
+  const totalPrice = dayPricings.reduce((sum, d) => sum + d.price, 0);
+  const pricing = dayPricings[0];
 
   // 4. Format date for title: YYYY-MM-DD → DD/MM/YYYY
   const [year, month, day] = quote.date.split("-");
   const dateFr = `${day}/${month}/${year}`;
+  const dateRange = numDays > 1 ? `${dateFr} → ${dayPricings[numDays - 1].dateFr}` : dateFr;
 
   // 5. Create Deal with price + custom fields
   const dealTitle = quote.company
-    ? `${quote.company} — ${dateFr} — ${quote.eventType}`
-    : `${dateFr} — ${quote.eventType}`;
+    ? `${quote.company} — ${dateRange} — ${quote.eventType}`
+    : `${dateRange} — ${quote.eventType}`;
   const dealBody: Record<string, unknown> = {
     title: dealTitle,
-    value: price,
+    value: totalPrice,
     currency: "EUR",
     person_id: personId,
     pipeline_id: PIPELINE_ID,
@@ -102,23 +120,33 @@ export async function sendToPipedrive(quote: QuoteRequest): Promise<void> {
   const dealId = dealData.data?.id;
 
   // 6. Add detailed note to the deal
-  const priceFormatted = new Intl.NumberFormat("fr-FR").format(price);
-  const noteContent = [
+  const totalFormatted = new Intl.NumberFormat("fr-FR").format(totalPrice);
+  const noteLines = [
     `<b>Demande de devis — Calendrier tarifaire</b>`,
     ``,
-    `<b>Date :</b> ${dateFr}`,
+    `<b>Date${numDays > 1 ? "s" : ""} :</b> ${dateRange}`,
     `<b>Créneau :</b> ${TIME_SLOT_LABELS[quote.timeSlot]}`,
-    `<b>Prix HT :</b> ${priceFormatted} €`,
-    `<b>Fenêtre :</b> ${pricing.bookingWindowLabel}`,
+  ];
+  if (numDays > 1) {
+    for (const dp of dayPricings) {
+      const pf = new Intl.NumberFormat("fr-FR").format(dp.price);
+      noteLines.push(`&nbsp;&nbsp;${dp.dateFr} : ${pf} € HT (${dp.windowLabel})`);
+    }
+    noteLines.push(`<b>Total HT :</b> ${totalFormatted} €`);
+  } else {
+    noteLines.push(`<b>Prix HT :</b> ${totalFormatted} €`);
+    noteLines.push(`<b>Fenêtre :</b> ${pricing.windowLabel}`);
+  }
+  noteLines.push(
     `<b>Type d'évènement :</b> ${quote.eventType}`,
     `<b>Nombre d'invités :</b> ${quote.guestCount}`,
     quote.company ? `<b>Entreprise :</b> ${quote.company}` : "",
+    quote.siret ? `<b>SIRET :</b> ${quote.siret}` : "",
     quote.message ? `<b>Message :</b> ${quote.message}` : "",
     ``,
     `<i>Source : Calendrier tarifaire en ligne (${quote.id})</i>`,
-  ]
-    .filter(Boolean)
-    .join("<br>");
+  );
+  const noteContent = noteLines.filter(Boolean).join("<br>");
 
   await fetch(`${API_BASE}/notes?${authParam}`, {
     method: "POST",

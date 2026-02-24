@@ -61,7 +61,7 @@ export function CalendarHeatmap({ days, year }: CalendarHeatmapProps) {
       </div>
 
       {selectedDay && (
-        <DayModal day={selectedDay} onClose={() => setSelectedDay(null)} />
+        <DayModal day={selectedDay} allDays={days} onClose={() => setSelectedDay(null)} />
       )}
     </div>
   );
