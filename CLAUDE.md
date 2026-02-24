@@ -159,6 +159,7 @@ Fashion Week > Fériés/Ponts/Vacances > Jour de la semaine
 - **Champ SIRET :** pré-rempli par l'autocomplete (readonly si 14 chars), éditable manuellement sinon
 - **Multi-jours consécutifs :** select 1-5 jours, breakdown prix par jour affiché, total calculé en temps réel, warning si jour indisponible
 - **Données transitées :** company, siret, numberOfDays dans le payload → KV + Pipedrive
+- **Mention légale :** "*prix indicatif pour location sèche." sous le récap prix
 
 ## Jours passés
 Les jours antérieurs à aujourd'hui sont grisés et non cliquables sur le calendrier public.
