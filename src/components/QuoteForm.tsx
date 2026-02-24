@@ -255,6 +255,9 @@ export function QuoteForm({ day, allDays, timeSlot, onBack, onSuccess }: QuoteFo
             Certains jours sont indisponibles pour ce créneau.
           </p>
         )}
+        <p className="mt-1 text-[10px] text-muted">
+          *prix indicatif pour location sèche.
+        </p>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
