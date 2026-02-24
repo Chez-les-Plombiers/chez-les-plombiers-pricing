@@ -130,13 +130,13 @@ Fashion Week > Fériés/Ponts/Vacances > Jour de la semaine
 - **Stages :** 1=Nouvelle demande, 2=Visite Planifiée, 3=Visite faite, 4=Devis envoyé, 5=Devis Relancé, 7=Demande Confirmée, 6=Paiement reçu
 - **Création deal (calendrier):** Person → (optionnel) Organization → Deal (stage 1) + Note épinglée
 - **Création deal (Calendly):** Person → Deal (stage 2 "Visite Planifiée") + Note épinglée
-- **Titre deal :** `Entreprise — DD/MM/YYYY — TypeEvent` (sans entreprise : `DD/MM/YYYY — TypeEvent`). Le contact s'affiche automatiquement en ligne 2 via person_id.
-- **Valeur deal :** prix HT calculé par le pricing engine (date + créneau + booking window + overrides)
+- **Titre deal :** `Entreprise — DD/MM/YYYY — TypeEvent` (multi-jours : `DD/MM → DD/MM`). Le contact s'affiche automatiquement en ligne 2 via person_id.
+- **Valeur deal :** prix HT total (somme de tous les jours) calculé par le pricing engine (date + créneau + booking window + overrides)
 - **Champs custom deal :**
   - `05834ee04351a62a91908c3b409ed21b388cf09e` = Nombre d'invités (double)
   - `b077edaa62f510022521226b4a9631e90f1b04c4` = Type d'évènement (varchar)
   - `71ec4d9da53a2578ac16a356018cddf3cf823a24` = Source (varchar : "Calendrier tarifaire" ou "Calendly")
-- **Note épinglée :** date, créneau, prix HT, fenêtre de réservation, type, invités, entreprise, message
+- **Note épinglée :** date(s), créneau, prix HT (détail par jour si multi-jours), fenêtre, type, invités, entreprise, SIRET, message
 - **Webhook Pipedrive :** deal updated → `POST /api/webhook/pipedrive`
   - Stage 7 ou 6 → marque la date comme réservée dans KV
   - Deal lost → libère la date dans KV
@@ -155,6 +155,10 @@ Fashion Week > Fériés/Ponts/Vacances > Jour de la semaine
 ## Formulaire devis (QuoteForm)
 - **Types d'évènement :** Défilé/Fashion show, Lancement produit, Cocktail/Soirée, Petit-déjeuner, Tournage/Shooting, Conférence/Séminaire, Formation, Exposition, Pop-up store, Autre
 - **Capacité max :** 200 invités
+- **Autocomplete entreprise :** API SIRENE (`recherche-entreprises.api.gouv.fr/search`) — debounce 300ms, max 5 suggestions (nom + SIRET + ville)
+- **Champ SIRET :** pré-rempli par l'autocomplete (readonly si 14 chars), éditable manuellement sinon
+- **Multi-jours consécutifs :** select 1-5 jours, breakdown prix par jour affiché, total calculé en temps réel, warning si jour indisponible
+- **Données transitées :** company, siret, numberOfDays dans le payload → KV + Pipedrive
 
 ## Jours passés
 Les jours antérieurs à aujourd'hui sont grisés et non cliquables sur le calendrier public.
