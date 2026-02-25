@@ -66,9 +66,8 @@ export async function sendToPipedrive(quote: QuoteRequest): Promise<void> {
   const numDays = quote.numberOfDays || 1;
   const dayPricings: { date: string; dateFr: string; price: number; windowLabel: string }[] = [];
   for (let i = 0; i < numDays; i++) {
-    const d = new Date(quote.date + "T00:00:00");
-    d.setDate(d.getDate() + i);
-    const dateStr = d.toISOString().split("T")[0];
+    const [qy, qm, qd] = quote.date.split("-").map(Number);
+    const dateStr = new Date(Date.UTC(qy, qm - 1, qd + i)).toISOString().split("T")[0];
     const ov = overrides[dateStr];
     const dp = computeDayPricing(dateStr, today, ov ?? undefined);
     const [y, m, dd] = dateStr.split("-");

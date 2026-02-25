@@ -60,11 +60,13 @@ export function AdminBulkEditor({ token, onClose, onSaved }: AdminBulkEditorProp
   function getDatesInRange(): string[] {
     if (!startDate || !endDate) return [];
     const dates: string[] = [];
-    const current = new Date(startDate + "T00:00:00");
-    const end = new Date(endDate + "T00:00:00");
+    const [sy, sm, sd] = startDate.split("-").map(Number);
+    const [ey, em, ed] = endDate.split("-").map(Number);
+    const current = new Date(Date.UTC(sy, sm - 1, sd));
+    const end = new Date(Date.UTC(ey, em - 1, ed));
     while (current <= end) {
       dates.push(current.toISOString().split("T")[0]);
-      current.setDate(current.getDate() + 1);
+      current.setUTCDate(current.getUTCDate() + 1);
     }
     return dates;
   }
@@ -72,15 +74,15 @@ export function AdminBulkEditor({ token, onClose, onSaved }: AdminBulkEditorProp
   function getDatesByWeekday(): string[] {
     if (weekdays.length === 0) return [];
     const dates: string[] = [];
-    const current = new Date("2026-01-01T00:00:00");
-    const end = new Date("2026-12-31T00:00:00");
+    const current = new Date(Date.UTC(2026, 0, 1));
+    const end = new Date(Date.UTC(2026, 11, 31));
     while (current <= end) {
-      const dow = current.getDay();
+      const dow = current.getUTCDay();
       const isoDow = dow === 0 ? 7 : dow;
       if (weekdays.includes(isoDow)) {
         dates.push(current.toISOString().split("T")[0]);
       }
-      current.setDate(current.getDate() + 1);
+      current.setUTCDate(current.getUTCDate() + 1);
     }
     return dates;
   }

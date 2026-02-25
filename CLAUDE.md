@@ -157,7 +157,7 @@ Fashion Week > Fériés/Ponts/Vacances > Jour de la semaine
 - **Capacité max :** 200 invités
 - **Autocomplete entreprise :** API SIRENE (`recherche-entreprises.api.gouv.fr/search`) — debounce 300ms, max 5 suggestions (nom + SIRET + ville)
 - **Champ SIRET :** pré-rempli par l'autocomplete (readonly si 14 chars), éditable manuellement sinon
-- **Multi-jours consécutifs :** select 1-5 jours, breakdown prix par jour affiché, total calculé en temps réel, warning si jour indisponible
+- **Multi-jours consécutifs :** select 1-7 jours, breakdown prix par jour affiché, total calculé en temps réel, warning si jour indisponible
 - **Données transitées :** company, siret, numberOfDays dans le payload → KV + Pipedrive
 - **Mention légale :** "*prix indicatif pour location sèche." sous le récap prix
 

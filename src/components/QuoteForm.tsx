@@ -38,11 +38,10 @@ const EVENT_TYPES = [
   "Autre",
 ];
 
-/** Add N days to a YYYY-MM-DD string */
+/** Add N days to a YYYY-MM-DD string (UTC-safe) */
 function addDays(dateStr: string, n: number): string {
-  const d = new Date(dateStr + "T00:00:00");
-  d.setDate(d.getDate() + n);
-  return d.toISOString().split("T")[0];
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().split("T")[0];
 }
 
 export function QuoteForm({ day, allDays, timeSlot, onBack, onSuccess }: QuoteFormProps) {
@@ -221,7 +220,7 @@ export function QuoteForm({ day, allDays, timeSlot, onBack, onSuccess }: QuoteFo
             onChange={(e) => setNumberOfDays(parseInt(e.target.value, 10))}
             className="border border-border bg-surface px-2 py-1 font-mono text-xs text-foreground focus:border-accent focus:outline-none"
           >
-            {[1, 2, 3, 4, 5].map((n) => (
+            {[1, 2, 3, 4, 5, 6, 7].map((n) => (
               <option key={n} value={n}>
                 {n} jour{n > 1 ? "s" : ""}
               </option>
