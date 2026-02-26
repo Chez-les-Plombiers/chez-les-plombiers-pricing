@@ -11,6 +11,7 @@ const STAGE_NEW = 1; // "Nouvelle demande"
 const FIELD_GUESTS = "05834ee04351a62a91908c3b409ed21b388cf09e";
 const FIELD_EVENT_TYPE = "b077edaa62f510022521226b4a9631e90f1b04c4";
 const FIELD_SOURCE = "71ec4d9da53a2578ac16a356018cddf3cf823a24";
+const FIELD_CANAL = "93cd462c774cf9c948185b75cdc08c40ea32f7e0"; // Canal d'origine (enum)
 
 /**
  * Send a quote request to Pipedrive CRM.
@@ -100,6 +101,7 @@ export async function sendToPipedrive(quote: QuoteRequest): Promise<void> {
     [FIELD_GUESTS]: quote.guestCount,
     [FIELD_EVENT_TYPE]: quote.eventType,
     [FIELD_SOURCE]: "Calendrier tarifaire",
+    [FIELD_CANAL]: 30, // Calendrier tarifaire
   };
   if (orgId) dealBody.org_id = orgId;
 

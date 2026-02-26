@@ -8,6 +8,25 @@ const STAGE_NEW = 1; // "Nouvelle demande"
 const FIELD_GUESTS = "05834ee04351a62a91908c3b409ed21b388cf09e";
 const FIELD_EVENT_TYPE = "b077edaa62f510022521226b4a9631e90f1b04c4";
 const FIELD_SOURCE = "71ec4d9da53a2578ac16a356018cddf3cf823a24";
+const FIELD_CANAL = "93cd462c774cf9c948185b75cdc08c40ea32f7e0"; // Canal d'origine (enum)
+
+// Canal d'origine option IDs
+const CANAL_OPTIONS: Record<string, number> = {
+  "Réseau Perso": 27,
+  "Instagram": 28,
+  "WhatsApp": 29,
+  "Calendrier tarifaire": 30,
+  "Calendly": 31,
+  "Plateforme": 32,
+  "Email": 33,
+  "Homemade": 34,
+  "Space to Pop": 35,
+  "Snap Event": 36,
+  "Kactus": 37,
+  "Office Rider": 38,
+  "Peerspace": 39,
+  "Xnomad": 40,
+};
 
 interface EmailLeadPayload {
   source: string; // "Kactus", "Preference Events", etc.
@@ -119,6 +138,7 @@ export async function POST(request: Request) {
       pipeline_id: PIPELINE_ID,
       stage_id: STAGE_NEW,
       [FIELD_SOURCE]: body.source,
+      [FIELD_CANAL]: CANAL_OPTIONS[body.source] ?? 33, // fallback: Email
       [FIELD_EVENT_TYPE]: eventType,
     };
     if (orgId) dealBody.org_id = orgId;

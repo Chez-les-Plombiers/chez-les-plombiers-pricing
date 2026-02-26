@@ -6,6 +6,7 @@ const STAGE_VISITE = 2; // "Visite Planifiée"
 
 // Pipedrive custom field keys
 const FIELD_SOURCE = "71ec4d9da53a2578ac16a356018cddf3cf823a24";
+const FIELD_CANAL = "93cd462c774cf9c948185b75cdc08c40ea32f7e0"; // Canal d'origine (enum)
 
 /**
  * Fetch scheduled event details from Calendly API to get the visit date/time.
@@ -113,6 +114,7 @@ export async function POST(request: Request) {
       pipeline_id: PIPELINE_ID,
       stage_id: STAGE_VISITE,
       [FIELD_SOURCE]: "Calendly",
+      [FIELD_CANAL]: 31, // Calendly
     };
 
     const dealRes = await fetch(`${PIPEDRIVE_API}/deals?${authParam}`, {
