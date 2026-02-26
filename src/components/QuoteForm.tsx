@@ -151,6 +151,7 @@ export function QuoteForm({ day, allDays, timeSlot, onBack, onSuccess }: QuoteFo
       phone: form.get("phone") as string,
       company: companyQuery || undefined,
       siret: siret || undefined,
+      endClient: (form.get("endClient") as string) || undefined,
       guestCount: parseInt(form.get("guestCount") as string, 10),
       eventType: form.get("eventType") as string,
       message: form.get("message") as string,
@@ -330,6 +331,11 @@ export function QuoteForm({ day, allDays, timeSlot, onBack, onSuccess }: QuoteFo
           placeholder="SIRET"
           readOnly={siret.length === 14}
           className="font-mono border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none read-only:text-muted"
+        />
+        <input
+          name="endClient"
+          placeholder="Client final (si agence)"
+          className="border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
         />
         <div className="grid grid-cols-2 gap-3">
           <input

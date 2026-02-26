@@ -12,6 +12,7 @@ const FIELD_GUESTS = "05834ee04351a62a91908c3b409ed21b388cf09e";
 const FIELD_EVENT_TYPE = "b077edaa62f510022521226b4a9631e90f1b04c4";
 const FIELD_SOURCE = "71ec4d9da53a2578ac16a356018cddf3cf823a24";
 const FIELD_CANAL = "93cd462c774cf9c948185b75cdc08c40ea32f7e0"; // Canal d'origine (enum)
+const FIELD_END_CLIENT = "d2b97f2477d6c3dc6b5b257add8abef4dc48b9b7"; // Client final (varchar)
 
 /**
  * Send a quote request to Pipedrive CRM.
@@ -103,6 +104,7 @@ export async function sendToPipedrive(quote: QuoteRequest): Promise<void> {
     [FIELD_SOURCE]: "Calendrier tarifaire",
     [FIELD_CANAL]: 30, // Calendrier tarifaire
   };
+  if (quote.endClient) dealBody[FIELD_END_CLIENT] = quote.endClient;
   if (orgId) dealBody.org_id = orgId;
 
   const dealRes = await fetch(`${API_BASE}/deals?${authParam}`, {
@@ -143,6 +145,7 @@ export async function sendToPipedrive(quote: QuoteRequest): Promise<void> {
     `<b>Nombre d'invités :</b> ${quote.guestCount}`,
     quote.company ? `<b>Entreprise :</b> ${quote.company}` : "",
     quote.siret ? `<b>SIRET :</b> ${quote.siret}` : "",
+    quote.endClient ? `<b>Client final :</b> ${quote.endClient}` : "",
     quote.message ? `<b>Message :</b> ${quote.message}` : "",
     ``,
     `<i>Source : Calendrier tarifaire en ligne (${quote.id})</i>`,

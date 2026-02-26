@@ -141,6 +141,7 @@ Fashion Week > Fériés/Ponts/Vacances > Jour de la semaine
     32=Plateforme, 33=Email, 34=Homemade, 35=Space to Pop, 36=Snap Event,
     37=Kactus, 38=Office Rider, 39=Peerspace, 40=Xnomad
   - Auto-rempli : calendrier→30, Calendly→31, email webhook→mapping par source (fallback 33/Email)
+  - `d2b97f2477d6c3dc6b5b257add8abef4dc48b9b7` = Client final (varchar) — marque/client pour qui l'agence réserve (ex: Nike, Ikea)
 - **Note épinglée :** date(s), créneau, prix HT (détail par jour si multi-jours), fenêtre, type, invités, entreprise, SIRET, message
 - **Webhook Pipedrive :** deal updated → `POST /api/webhook/pipedrive`
   - Stage 7 ou 6 → marque la date comme réservée dans KV
@@ -163,7 +164,7 @@ Fashion Week > Fériés/Ponts/Vacances > Jour de la semaine
 - **Autocomplete entreprise :** API SIRENE (`recherche-entreprises.api.gouv.fr/search`) — debounce 300ms, max 5 suggestions (nom + SIRET + ville)
 - **Champ SIRET :** pré-rempli par l'autocomplete (readonly si 14 chars), éditable manuellement sinon
 - **Multi-jours consécutifs :** select 1-7 jours, breakdown prix par jour affiché, total calculé en temps réel, warning si jour indisponible
-- **Données transitées :** company, siret, numberOfDays dans le payload → KV + Pipedrive
+- **Données transitées :** company, siret, endClient, numberOfDays dans le payload → KV + Pipedrive
 - **Mention légale :** "*prix indicatif pour location sèche." sous le récap prix
 
 ## Jours passés
