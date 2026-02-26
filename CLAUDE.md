@@ -135,7 +135,12 @@ Fashion Week > Fériés/Ponts/Vacances > Jour de la semaine
 - **Champs custom deal :**
   - `05834ee04351a62a91908c3b409ed21b388cf09e` = Nombre d'invités (double)
   - `b077edaa62f510022521226b4a9631e90f1b04c4` = Type d'évènement (varchar)
-  - `71ec4d9da53a2578ac16a356018cddf3cf823a24` = Source (varchar : "Calendrier tarifaire" ou "Calendly")
+  - `71ec4d9da53a2578ac16a356018cddf3cf823a24` = Source (varchar : "Calendrier tarifaire", "Calendly", ou nom plateforme)
+  - `93cd462c774cf9c948185b75cdc08c40ea32f7e0` = Canal d'origine (enum, ID 49) — dropdown 14 options :
+    27=Réseau Perso, 28=Instagram, 29=WhatsApp, 30=Calendrier tarifaire, 31=Calendly,
+    32=Plateforme, 33=Email, 34=Homemade, 35=Space to Pop, 36=Snap Event,
+    37=Kactus, 38=Office Rider, 39=Peerspace, 40=Xnomad
+  - Auto-rempli : calendrier→30, Calendly→31, email webhook→mapping par source (fallback 33/Email)
 - **Note épinglée :** date(s), créneau, prix HT (détail par jour si multi-jours), fenêtre, type, invités, entreprise, SIRET, message
 - **Webhook Pipedrive :** deal updated → `POST /api/webhook/pipedrive`
   - Stage 7 ou 6 → marque la date comme réservée dans KV
