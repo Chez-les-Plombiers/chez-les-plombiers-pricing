@@ -130,7 +130,7 @@ Fashion Week > Fériés/Ponts/Vacances > Jour de la semaine
 - **Stages :** 1=Nouvelle demande, 2=Visite Planifiée, 3=Visite faite, 4=Devis envoyé, 5=Devis Relancé, 7=Demande Confirmée, 6=Paiement reçu
 - **Création deal (calendrier):** Person → (optionnel) Organization → Deal (stage 1) + Note épinglée
 - **Création deal (Calendly):** Person → Deal (stage 2 "Visite Planifiée") + Note épinglée
-- **Titre deal :** `Entreprise — DD/MM/YYYY — TypeEvent` (multi-jours : `DD/MM → DD/MM`). Le contact s'affiche automatiquement en ligne 2 via person_id.
+- **Titre deal :** `Entreprise — DD/MM/YYYY Matin — TypeEvent` (créneau : Matin/Après-midi/Journée, multi-jours : `DD/MM → DD/MM`). Le contact s'affiche automatiquement en ligne 2 via person_id.
 - **Valeur deal :** prix HT total (somme de tous les jours) calculé par le pricing engine (date + créneau + booking window + overrides)
 - **Champs custom deal :**
   - `05834ee04351a62a91908c3b409ed21b388cf09e` = Nombre d'invités (double)
@@ -144,9 +144,10 @@ Fashion Week > Fériés/Ponts/Vacances > Jour de la semaine
   - `d2b97f2477d6c3dc6b5b257add8abef4dc48b9b7` = Client final (varchar) — marque/client pour qui l'agence réserve (ex: Nike, Ikea)
 - **Note épinglée :** date(s), créneau, prix HT (détail par jour si multi-jours), fenêtre, type, invités, entreprise, SIRET, message
 - **Webhook Pipedrive :** deal updated → `POST /api/webhook/pipedrive`
-  - Stage 7 ou 6 → marque la date comme réservée dans KV
-  - Deal lost → libère la date dans KV
-  - Retour d'un stage booked → libère la date
+  - Détecte le créneau depuis le titre du deal ("Matin" → isBookedMorning, "Après-midi" → isBookedAfternoon, sinon → isBooked full day)
+  - Stage 7 ou 6 → marque la date/créneau comme réservé dans KV (merge avec overrides existants)
+  - Deal lost → libère uniquement le créneau concerné (pas les autres bookings du même jour)
+  - Retour d'un stage booked → idem, libère le créneau
 - **Webhook Calendly :** invitee.created → `POST /api/webhook/calendly`
   - Fetch event details via Calendly API (date/heure visite)
   - Crée Person + Deal stage 2 + Note épinglée (source "Calendly")
@@ -169,6 +170,13 @@ Fashion Week > Fériés/Ponts/Vacances > Jour de la semaine
 
 ## Jours passés
 Les jours antérieurs à aujourd'hui sont grisés et non cliquables sur le calendrier public.
+
+## Affichage demi-journées réservées
+- DayCell (public) et AdminCalendar (admin) affichent un split matin/après-midi
+- Demi-journée réservée = `bg-tier-booked/80` (gris visible sur fond sombre)
+- Demi-journée dispo = couleur du tier à opacity-20
+- Journée complète réservée = cellule disabled `bg-tier-booked/40`
+- Le webhook Pipedrive détecte le créneau depuis le titre du deal et set le bon flag (Matin/Après-midi/Journée)
 
 ## Convention
 - Pas de border-radius (esthétique brutaliste)
