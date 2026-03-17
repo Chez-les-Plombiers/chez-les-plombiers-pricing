@@ -89,9 +89,13 @@ export async function sendToPipedrive(quote: QuoteRequest): Promise<void> {
   const dateRange = numDays > 1 ? `${dateFr} → ${dayPricings[numDays - 1].dateFr}` : dateFr;
 
   // 5. Create Deal with price + custom fields
+  const slotLabel = quote.timeSlot === "matinee" ? "Matin"
+    : quote.timeSlot === "apres-midi" ? "Après-midi"
+    : "Journée";
+  const dateWithSlot = `${dateRange} ${slotLabel}`;
   const dealTitle = quote.company
-    ? `${quote.company} — ${dateRange} — ${quote.eventType}`
-    : `${dateRange} — ${quote.eventType}`;
+    ? `${quote.company} — ${dateWithSlot} — ${quote.eventType}`
+    : `${dateWithSlot} — ${quote.eventType}`;
   const dealBody: Record<string, unknown> = {
     title: dealTitle,
     value: totalPrice,
