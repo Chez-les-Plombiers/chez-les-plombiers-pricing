@@ -52,7 +52,7 @@ export function DayCell({ day, today, onClick }: DayCellProps) {
             className={cn(
               "absolute inset-y-0 left-0 w-1/2 transition-opacity",
               day.isBookedMorning
-                ? "bg-tier-booked/40"
+                ? "bg-tier-booked/80"
                 : "opacity-20 group-hover:opacity-30"
             )}
             style={!day.isBookedMorning ? { backgroundColor: tier.color } : undefined}
@@ -61,7 +61,7 @@ export function DayCell({ day, today, onClick }: DayCellProps) {
             className={cn(
               "absolute inset-y-0 right-0 w-1/2 transition-opacity",
               day.isBookedAfternoon
-                ? "bg-tier-booked/40"
+                ? "bg-tier-booked/80"
                 : "opacity-20 group-hover:opacity-30"
             )}
             style={!day.isBookedAfternoon ? { backgroundColor: tier.color } : undefined}

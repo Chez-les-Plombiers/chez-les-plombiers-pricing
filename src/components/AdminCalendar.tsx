@@ -268,6 +268,8 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
                 ))}
                 {monthDays.map((day) => {
                   const tier = TIERS[day.tier];
+                  const fullyBooked = day.isBooked || (day.isBookedMorning && day.isBookedAfternoon);
+                  const hasHalfBooking = !fullyBooked && (day.isBookedMorning || day.isBookedAfternoon);
                   return (
                     <button
                       key={day.date}
@@ -281,13 +283,40 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
                       <span className="relative z-10 text-foreground">
                         {getDayOfMonth(day.date)}
                       </span>
-                      <div
-                        className={cn(
-                          "absolute inset-0 opacity-20 group-hover:opacity-30",
-                          day.isBooked && "opacity-40"
-                        )}
-                        style={{ backgroundColor: day.isBooked ? "#404040" : tier.color }}
-                      />
+                      {/* Full day booked or no half-day booking: single background */}
+                      {!hasHalfBooking && (
+                        <div
+                          className={cn(
+                            "absolute inset-0 opacity-20 group-hover:opacity-30",
+                            fullyBooked && "opacity-40"
+                          )}
+                          style={{ backgroundColor: fullyBooked ? "#404040" : tier.color }}
+                        />
+                      )}
+                      {/* Half-day booking: split display */}
+                      {hasHalfBooking && (
+                        <>
+                          <div
+                            className={cn(
+                              "absolute inset-y-0 left-0 w-1/2",
+                              day.isBookedMorning
+                                ? "bg-tier-booked/80"
+                                : "opacity-20 group-hover:opacity-30"
+                            )}
+                            style={!day.isBookedMorning ? { backgroundColor: tier.color } : undefined}
+                          />
+                          <div
+                            className={cn(
+                              "absolute inset-y-0 right-0 w-1/2",
+                              day.isBookedAfternoon
+                                ? "bg-tier-booked/80"
+                                : "opacity-20 group-hover:opacity-30"
+                            )}
+                            style={!day.isBookedAfternoon ? { backgroundColor: tier.color } : undefined}
+                          />
+                          <div className="absolute inset-y-1 left-1/2 w-px bg-background/20" />
+                        </>
+                      )}
                     </button>
                   );
                 })}
