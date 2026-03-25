@@ -54,7 +54,7 @@ export async function getCalendarBookings(
   const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?${params}`;
 
   try {
-    const res = await fetch(url, { next: { revalidate: 300 } }); // cache 5 min
+    const res = await fetch(url, { cache: "no-store" });
 
     if (!res.ok) {
       console.error("[Google Calendar] API error:", res.status, await res.text());
