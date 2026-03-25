@@ -9,7 +9,7 @@ import { getMonthNameFR, getDayLetters, getISODayOfWeek, getDayOfMonth } from "@
 import { cn } from "@/lib/utils";
 import { AdminDayEditor } from "./AdminDayEditor";
 import { AdminBulkEditor } from "./AdminBulkEditor";
-import { Layers, BarChart3, MessageSquare, RefreshCw, Lock, TrendingUp } from "lucide-react";
+import { Layers, BarChart3, MessageSquare, RefreshCw, Lock, TrendingUp, ChevronDown, ChevronUp, Phone, Mail, Building2, Calendar, Users, Clock } from "lucide-react";
 
 interface AdminCalendarProps {
   token: string;
@@ -23,10 +23,18 @@ interface AnalyticsData {
 interface Quote {
   id: string;
   date: string;
+  timeSlot: string;
   firstName: string;
   lastName: string;
   email: string;
+  phone: string;
+  company?: string;
+  siret?: string;
+  endClient?: string;
+  numberOfDays: number;
+  guestCount: number;
   eventType: string;
+  message?: string;
   createdAt: string;
 }
 
@@ -42,6 +50,7 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [calendarPassword, setCalendarPassword] = useState("");
   const [passwordSaved, setPasswordSaved] = useState(false);
+  const [expandedQuote, setExpandedQuote] = useState<string | null>(null);
 
   const fetchPricing = useCallback(async () => {
     setLoading(true);
@@ -220,22 +229,104 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
       {showQuotes && (
         <div className="border border-border bg-card p-4">
           <h3 className="mb-3 font-mono text-xs font-bold uppercase tracking-widest text-accent">
-            Demandes de devis
+            Demandes de devis ({quotes.length})
           </h3>
           {quotes.length === 0 ? (
             <p className="text-xs text-muted">
               Aucune demande de devis pour le moment.
             </p>
           ) : (
-            <div className="flex flex-col gap-2">
-              {quotes.map((q) => (
-                <div key={q.id} className="flex justify-between border border-border bg-surface p-2">
-                  <span className="text-xs text-foreground">
-                    {q.firstName} {q.lastName} — {q.eventType}
-                  </span>
-                  <span className="text-xs text-muted">{q.date}</span>
-                </div>
-              ))}
+            <div className="flex flex-col gap-1">
+              {quotes.map((q) => {
+                const isExpanded = expandedQuote === q.id;
+                const [y, m, d] = q.date.split("-");
+                const dateFr = `${d}/${m}/${y}`;
+                const createdDate = new Date(q.createdAt);
+                const createdFr = createdDate.toLocaleDateString("fr-FR", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
+                const slotLabels: Record<string, string> = {
+                  matinee: "Matinée",
+                  "apres-midi": "Après-midi",
+                  "journee-complete": "Journée complète",
+                };
+                return (
+                  <div key={q.id} className="border border-border bg-surface">
+                    <button
+                      onClick={() => setExpandedQuote(isExpanded ? null : q.id)}
+                      className="flex w-full items-center justify-between p-3 text-left transition-colors hover:bg-background/50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium text-foreground">
+                          {q.firstName} {q.lastName}
+                        </span>
+                        <span className="font-mono text-[10px] uppercase tracking-wider text-accent">
+                          {q.eventType}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-muted">{dateFr}</span>
+                        {isExpanded ? (
+                          <ChevronUp className="h-3 w-3 text-muted" />
+                        ) : (
+                          <ChevronDown className="h-3 w-3 text-muted" />
+                        )}
+                      </div>
+                    </button>
+                    {isExpanded && (
+                      <div className="border-t border-border px-3 pb-3 pt-2">
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          <div className="flex items-center gap-2">
+                            <Mail className="h-3 w-3 text-muted" />
+                            <a href={`mailto:${q.email}`} className="text-xs text-accent hover:underline">{q.email}</a>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Phone className="h-3 w-3 text-muted" />
+                            <a href={`tel:${q.phone}`} className="text-xs text-accent hover:underline">{q.phone}</a>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-3 w-3 text-muted" />
+                            <span className="text-xs text-foreground">
+                              {dateFr}{q.numberOfDays > 1 ? ` (${q.numberOfDays} jours)` : ""} — {slotLabels[q.timeSlot] || q.timeSlot}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Users className="h-3 w-3 text-muted" />
+                            <span className="text-xs text-foreground">{q.guestCount} invités</span>
+                          </div>
+                          {q.company && (
+                            <div className="flex items-center gap-2">
+                              <Building2 className="h-3 w-3 text-muted" />
+                              <span className="text-xs text-foreground">
+                                {q.company}{q.siret ? ` — SIRET ${q.siret}` : ""}
+                              </span>
+                            </div>
+                          )}
+                          {q.endClient && (
+                            <div className="flex items-center gap-2">
+                              <Building2 className="h-3 w-3 text-muted" />
+                              <span className="text-xs text-foreground">Client final : {q.endClient}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-3 w-3 text-muted" />
+                            <span className="text-xs text-muted">Reçu le {createdFr}</span>
+                          </div>
+                        </div>
+                        {q.message && (
+                          <div className="mt-2 border-t border-border pt-2">
+                            <p className="text-xs text-foreground">{q.message}</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

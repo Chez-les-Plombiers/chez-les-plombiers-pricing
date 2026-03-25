@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { addQuote, getAllQuotes } from "@/lib/kv";
 import { sendToPipedrive } from "@/lib/pipedrive";
+import { sendQuoteNotification } from "@/lib/email";
 import type { QuoteRequest } from "@/types";
 
 export async function GET(request: Request) {
@@ -66,6 +67,13 @@ export async function POST(request: Request) {
       await sendToPipedrive(quote);
     } catch (err) {
       console.error("[Pipedrive] Failed to create deal:", err instanceof Error ? err.message : err);
+    }
+
+    // Send email notification to team
+    try {
+      await sendQuoteNotification(quote);
+    } catch (err) {
+      console.error("[Email] Failed to send notification:", err instanceof Error ? err.message : err);
     }
 
     return NextResponse.json({ success: true, id: quote.id });
