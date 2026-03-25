@@ -59,6 +59,7 @@ src/
 │   ├── tier-config.ts              # 4 tiers (visual), prix par jour de semaine, booking windows
 │   ├── kv.ts                       # Wrapper Upstash Redis (overrides, devis, analytics, calendar password)
 │   ├── pipedrive.ts               # Appels HTTP vers Pipedrive CRM (Person + Org + Deal + Note)
+│   ├── email.ts                   # Notifications email Resend (devis → 3 destinataires)
 │   ├── date-utils.ts               # Formatage dates FR
 │   ├── ical-generator.ts           # Générateur format iCal
 │   └── utils.ts                    # cn() — clsx + tailwind-merge
@@ -73,6 +74,7 @@ KV_REST_API_URL=xxx          # Upstash Redis (auto-ajouté par Vercel)
 KV_REST_API_TOKEN=xxx        # Upstash Redis (auto-ajouté par Vercel)
 PIPEDRIVE_API_TOKEN=xxx      # API token Pipedrive CRM
 CALENDLY_API_TOKEN=xxx       # Personal Access Token Calendly (user: chezlesplombiers)
+RESEND_API_KEY=xxx           # Resend (domaine chezlesplombiers.fr vérifié)
 ```
 
 ## Analytics
@@ -156,8 +158,15 @@ Fashion Week > Fériés/Ponts/Vacances > Jour de la semaine
   - Payload : `{ source, name, email, phone, company, date, eventType, guestCount, message }`
   - Crée Person + Org + Deal stage 1 + Note épinglée
   - Workflow n8n prêt : `n8n-workflows/kactus-email-to-pipedrive.json`
-- **Devis :** formulaire → stocké KV + envoi Pipedrive (await, avec error logging)
+- **Devis :** formulaire → stocké KV + envoi Pipedrive (await, avec error logging) + email notification
 - **MCP server :** `@iamsamuelfraga/mcp-pipedrive` (stdio, npx) — configuré dans Claude Code pour ce projet, env var `PIPEDRIVE_API_TOKEN`
+
+## Notifications email (Resend)
+- **Provider :** Resend — domaine `chezlesplombiers.fr` vérifié
+- **From :** `Calendrier CLP <notifications@chezlesplombiers.fr>`
+- **Destinataires :** etienne@chezlesplombiers.fr, celine@chezlesplombiers.fr, frederic@chezlesplombiers.fr
+- **Déclencheur :** chaque `POST /api/quote` (après KV + Pipedrive, fail silently)
+- **Contenu :** contact, email, tél, entreprise/SIRET, client final, date(s), créneau, type, invités, message
 
 ## Formulaire devis (QuoteForm)
 - **Types d'évènement :** Défilé/Fashion show, Lancement produit, Cocktail/Soirée, Petit-déjeuner, Tournage/Shooting, Conférence/Séminaire, Formation, Exposition, Pop-up store, Autre

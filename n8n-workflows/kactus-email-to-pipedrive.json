@@ -1,0 +1,93 @@
+{
+  "name": "Kactus Email → Pipedrive",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute",
+              "minute": 2
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "from": "kactus",
+          "unseen": true
+        }
+      },
+      "id": "imap-trigger",
+      "name": "Watch Kactus Emails",
+      "type": "n8n-nodes-base.imapEmail",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "credentials": {
+        "imap": {
+          "id": "REPLACE_WITH_IMAP_CREDENTIAL_ID",
+          "name": "Gmail CLP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Kactus email body\nconst text = $input.first().json.text || $input.first().json.html || '';\n\n// Extract contact name: \"de la part de {Name} de la société\"\nconst nameMatch = text.match(/de la part de ([\\w\\-éèêëàâùûôîïç]+)/i);\nconst name = nameMatch ? nameMatch[1] : '';\n\n// Extract company: \"de la société {COMPANY} pour\"\nconst companyMatch = text.match(/de la soci[ée]t[ée] ([^\\n]+?) pour/i);\nconst company = companyMatch ? companyMatch[1].trim() : '';\n\n// Extract event type + guests: \"{EventType} pour {N} personnes\"\nconst eventMatch = text.match(/pour son [ée]v[ée]nement\\s*[:\\s]*\\n?\\s*(.+?)\\s+pour\\s+(\\d+)\\s+personnes/is);\nlet eventType = '';\nlet guestCount = 0;\nif (eventMatch) {\n  eventType = eventMatch[1].trim();\n  guestCount = parseInt(eventMatch[2], 10);\n}\n\n// Extract date: \"le {DD} {month} {YYYY}\" or \"le {DD}/{MM}/{YYYY}\"\nconst months = { 'janvier':'01','février':'02','mars':'03','avril':'04','mai':'05','juin':'06','juillet':'07','août':'08','septembre':'09','octobre':'10','novembre':'11','décembre':'12' };\nlet date = '';\nconst dateMatch = text.match(/le (\\d{1,2})\\s+(janvier|f[ée]vrier|mars|avril|mai|juin|juillet|ao[ûu]t|septembre|octobre|novembre|d[ée]cembre)\\s+(\\d{4})/i);\nif (dateMatch) {\n  const day = dateMatch[1].padStart(2, '0');\n  const month = months[dateMatch[2].toLowerCase()] || '01';\n  date = `${day}/${month}/${dateMatch[3]}`;\n}\n\n// Extract budget: \"Budget de {N} €\" or \"Budget de {N N} €\"\nconst budgetMatch = text.match(/Budget de ([\\d\\s]+)\\s*€/i);\nconst budget = budgetMatch ? budgetMatch[1].replace(/\\s/g, '') : '';\n\nconst message = budget ? `Budget client : ${parseInt(budget).toLocaleString('fr-FR')} €` : '';\n\nreturn [{ json: { source: 'Kactus', name, company, eventType, guestCount, date, message } }];"
+      },
+      "id": "parse-email",
+      "name": "Parse Kactus Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://pricing.chezlesplombiers.fr/api/webhook/email-lead",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Secret",
+              "value": "REPLACE_WITH_ADMIN_PASSWORD"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}"
+      },
+      "id": "http-request",
+      "name": "Send to Pipedrive",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [710, 300]
+    }
+  ],
+  "connections": {
+    "Watch Kactus Emails": {
+      "main": [
+        [
+          {
+            "node": "Parse Kactus Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Kactus Email": {
+      "main": [
+        [
+          {
+            "node": "Send to Pipedrive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
