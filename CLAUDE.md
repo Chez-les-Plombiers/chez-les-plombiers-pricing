@@ -10,6 +10,7 @@ Webapp calendrier affichant les prix de location par jour pour un lieu événeme
 - **Next.js 16** + App Router + TypeScript strict + React 19
 - **Tailwind CSS v4** (`@theme inline` dans globals.css)
 - **Upstash Redis** pour overrides de prix, demandes de devis, analytics
+- **Google Calendar API** pour la disponibilité (source of truth)
 - **Pipedrive API** (`https://api.pipedrive.com/v1`) pour sync CRM
 - **Vercel** hosting, auto-deploy sur push main
 
@@ -59,6 +60,7 @@ src/
 │   ├── tier-config.ts              # 4 tiers (visual), prix par jour de semaine, booking windows
 │   ├── kv.ts                       # Wrapper Upstash Redis (overrides, devis, analytics, calendar password)
 │   ├── pipedrive.ts               # Appels HTTP vers Pipedrive CRM (Person + Org + Deal + Note)
+│   ├── google-calendar.ts         # Fetch Google Calendar events → booking slots (source of truth dispo)
 │   ├── email.ts                   # Notifications email Resend (devis → 3 destinataires)
 │   ├── date-utils.ts               # Formatage dates FR
 │   ├── ical-generator.ts           # Générateur format iCal
@@ -75,6 +77,8 @@ KV_REST_API_TOKEN=xxx        # Upstash Redis (auto-ajouté par Vercel)
 PIPEDRIVE_API_TOKEN=xxx      # API token Pipedrive CRM
 CALENDLY_API_TOKEN=xxx       # Personal Access Token Calendly (user: chezlesplombiers)
 RESEND_API_KEY=xxx           # Resend (domaine chezlesplombiers.fr vérifié)
+GOOGLE_CALENDAR_ID=xxx       # ID du calendrier Google (source of truth dispo)
+GOOGLE_CALENDAR_API_KEY=xxx  # API key GCP (projet chez-les-plombiers-490515)
 ```
 
 ## Analytics
@@ -120,6 +124,19 @@ RESEND_API_KEY=xxx           # Resend (domaine chezlesplombiers.fr vérifié)
 
 ### Priorité des tiers
 Fashion Week > Fériés/Ponts/Vacances > Jour de la semaine
+
+## Google Calendar — Source of truth disponibilité
+- **Calendrier :** "PLOMBIERS / VALIDÉ" — `c_c1de52d8f5aa41e62bf0988bbb5112c46ee33d12449e22ad9d4d7099dc54a911@group.calendar.google.com`
+- **GCP :** projet `chez-les-plombiers-490515`, API key publique (calendrier public)
+- **Logique demi-journée :**
+  - Event 7h–13h → matin réservé (`isBookedMorning`)
+  - Event 13h–19h → après-midi réservé (`isBookedAfternoon`)
+  - Event chevauchant les deux → journée complète (`isBooked`)
+  - Event all-day → journée complète
+  - Deux demi-journées séparées le même jour → journée complète
+- **Merge :** les bookings GCal sont mergés dans les overrides KV avant `computeYearPricing()`, dans `page.tsx` (SSR) et `GET /api/pricing` (admin/API)
+- **Cache :** `cache: "no-store"` — chaque requête page/API refetch le calendrier Google
+- **Important :** les events doivent être sur le calendrier "PLOMBIERS / VALIDÉ", pas sur un calendrier perso
 
 ## Accès calendrier public
 - Protégé par code d'accès (page /gate, cookie `clp-access` 90j)
@@ -185,7 +202,7 @@ Les jours antérieurs à aujourd'hui sont grisés et non cliquables sur le calen
 - Demi-journée réservée = `bg-tier-booked/80` (gris visible sur fond sombre)
 - Demi-journée dispo = couleur du tier à opacity-20
 - Journée complète réservée = cellule disabled `bg-tier-booked/40`
-- Le webhook Pipedrive détecte le créneau depuis le titre du deal et set le bon flag (Matin/Après-midi/Journée)
+- La disponibilité est déterminée par Google Calendar (source of truth)
 
 ## Convention
 - Pas de border-radius (esthétique brutaliste)
