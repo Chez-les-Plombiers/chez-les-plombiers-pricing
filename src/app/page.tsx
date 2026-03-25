@@ -1,5 +1,6 @@
 import { computeYearPricing } from "@/lib/pricing-engine";
 import { getAllOverrides } from "@/lib/kv";
+import { getCalendarBookings } from "@/lib/google-calendar";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { CalendarHeatmap } from "@/components/CalendarHeatmap";
@@ -9,7 +10,23 @@ export const dynamic = "force-dynamic";
 const YEAR = 2026;
 
 export default async function HomePage() {
-  const overrides = await getAllOverrides();
+  const [overrides, gcalBookings] = await Promise.all([
+    getAllOverrides(),
+    getCalendarBookings(YEAR),
+  ]);
+
+  // Merge Google Calendar bookings into overrides (GCal = source of truth for availability)
+  for (const [date, booking] of Object.entries(gcalBookings)) {
+    const existing = overrides[date] || { date };
+    overrides[date] = {
+      ...existing,
+      date,
+      isBooked: booking.isBooked || false,
+      isBookedMorning: booking.isBookedMorning || false,
+      isBookedAfternoon: booking.isBookedAfternoon || false,
+    };
+  }
+
   const days = computeYearPricing(YEAR, overrides);
 
   return (

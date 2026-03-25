@@ -1,11 +1,28 @@
 import { NextResponse } from "next/server";
 import { computeYearPricing } from "@/lib/pricing-engine";
 import { getAllOverrides, setOverride } from "@/lib/kv";
+import { getCalendarBookings } from "@/lib/google-calendar";
 import type { PricingOverride } from "@/types";
 
 export async function GET() {
   try {
-    const overrides = await getAllOverrides();
+    const [overrides, gcalBookings] = await Promise.all([
+      getAllOverrides(),
+      getCalendarBookings(2026),
+    ]);
+
+    // Merge Google Calendar bookings (source of truth for availability)
+    for (const [date, booking] of Object.entries(gcalBookings)) {
+      const existing = overrides[date] || { date };
+      overrides[date] = {
+        ...existing,
+        date,
+        isBooked: booking.isBooked || false,
+        isBookedMorning: booking.isBookedMorning || false,
+        isBookedAfternoon: booking.isBookedAfternoon || false,
+      };
+    }
+
     const days = computeYearPricing(2026, overrides);
     return NextResponse.json({ year: 2026, days });
   } catch {
