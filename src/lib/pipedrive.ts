@@ -5,7 +5,7 @@ import { getAllOverrides } from "./kv";
 
 const API_BASE = "https://api.pipedrive.com/v1";
 const PIPELINE_ID = 1; // "Pipeline Principal"
-const STAGE_NEW = 1; // "Nouvelle demande"
+const STAGE_NEW = 1; // "DEMANDE D'INFOS"
 
 // Custom deal field keys (created in Pipedrive)
 const FIELD_GUESTS = "05834ee04351a62a91908c3b409ed21b388cf09e";
