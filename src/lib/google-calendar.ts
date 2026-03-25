@@ -1,5 +1,5 @@
-const CALENDAR_ID = process.env.GOOGLE_CALENDAR_ID;
-const API_KEY = process.env.GOOGLE_CALENDAR_API_KEY;
+const CALENDAR_ID = process.env.GOOGLE_CALENDAR_ID?.trim();
+const API_KEY = process.env.GOOGLE_CALENDAR_API_KEY?.trim();
 
 interface GCalEvent {
   start: { dateTime?: string; date?: string };
