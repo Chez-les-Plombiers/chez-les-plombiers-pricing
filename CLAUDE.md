@@ -9,9 +9,11 @@ Webapp calendrier affichant les prix de location par jour pour un lieu événeme
 ## Stack
 - **Next.js 16** + App Router + TypeScript strict + React 19
 - **Tailwind CSS v4** (`@theme inline` dans globals.css)
-- **Upstash Redis** pour overrides de prix, demandes de devis, analytics
+- **Upstash Redis** pour overrides de prix, demandes de devis, analytics, données finances
 - **Google Calendar API** pour la disponibilité (source of truth)
+- **Pennylane API** (`app.pennylane.com/api/external/v2`) pour facturation / CA
 - **Pipedrive API** (`https://api.pipedrive.com/v1`) pour sync CRM
+- **Chart.js** + react-chartjs-2 pour graphiques finances
 - **Vercel** hosting, auto-deploy sur push main
 
 ## Commandes
@@ -28,6 +30,9 @@ src/
 │   ├── page.tsx                    # Server (dynamic) : lit overrides KV
 │   ├── gate/page.tsx               # Page d'accès par code (cookie 90j)
 │   ├── admin/                      # Panel admin protégé par mot de passe
+│   │   ├── page.tsx / client.tsx   # Dashboard calendrier admin
+│   │   ├── projections/            # Projections financières (scénarios)
+│   │   └── finances/               # Dashboard finances (CA Pennylane + manuel)
 │   └── api/
 │       ├── admin/auth/             # POST: auth par mot de passe
 │       ├── admin/calendar-password/ # GET/PUT: mot de passe calendrier (KV)
@@ -36,6 +41,11 @@ src/
 │       ├── pricing/[date]/         # PUT/DELETE: modifier/supprimer override
 │       ├── availability/           # GET/PUT: jours réservés
 │       ├── quote/                  # GET: liste devis (admin), POST: créer devis → KV + Pipedrive
+│       ├── finances/               # GET: données 12 mois + factures Pennylane
+│       ├── finances/[year]/[month]/ # PATCH: MAJ statut/CA/charges d'un mois
+│       ├── finances/reset/[year]/  # POST: réinitialiser aux valeurs par défaut
+│       ├── finances/export/        # GET: export CSV
+│       ├── finances/invoice-override/ # POST: réattribuer une facture à un autre mois
 │       ├── ical/                   # GET: flux .ics
 │       ├── analytics/              # GET/POST: vues par jour
 │       ├── webhook/pipedrive/      # POST: webhook Pipedrive (deal stage change → KV)
@@ -53,12 +63,15 @@ src/
 │   ├── MonthNavigator.tsx           # Nav mois (mobile only, sm:hidden)
 │   ├── AdminCalendar.tsx            # Calendrier admin + analytics + devis + mot de passe
 │   ├── AdminDayEditor.tsx           # Édition prix/tier/dispo d'un jour
-│   └── AdminBulkEditor.tsx          # Édition en masse (plage dates / jours semaine)
+│   ├── AdminBulkEditor.tsx          # Édition en masse (plage dates / jours semaine)
+│   └── FinancesDashboard.tsx        # Dashboard finances (cartes, chart, tableau, tiroirs factures)
 ├── lib/
 │   ├── pricing-engine.ts           # getTierForDate(), getBasePrice(), getBookingWindow(), computeYearPricing()
 │   ├── calendar-data.ts            # Dates 2026 : FW, fériés, vacances, ponts
 │   ├── tier-config.ts              # 4 tiers (visual), prix par jour de semaine, booking windows
-│   ├── kv.ts                       # Wrapper Upstash Redis (overrides, devis, analytics, calendar password)
+│   ├── kv.ts                       # Wrapper Upstash Redis (overrides, devis, analytics, calendar password, finances)
+│   ├── pennylane.ts               # Client API Pennylane (factures, agrégation mensuelle, réattribution)
+│   ├── finance-defaults.ts        # Charges fixes, prévisionnels par défaut (2025/2026)
 │   ├── pipedrive.ts               # Appels HTTP vers Pipedrive CRM (Person + Org + Deal + Note)
 │   ├── google-calendar.ts         # Fetch Google Calendar events → booking slots (source of truth dispo)
 │   ├── email.ts                   # Notifications email Resend (devis → 3 destinataires)
@@ -79,6 +92,7 @@ CALENDLY_API_TOKEN=xxx       # Personal Access Token Calendly (user: chezlesplom
 RESEND_API_KEY=xxx           # Resend (domaine chezlesplombiers.fr vérifié)
 GOOGLE_CALENDAR_ID=xxx       # ID du calendrier Google (source of truth dispo)
 GOOGLE_CALENDAR_API_KEY=xxx  # API key GCP (projet chez-les-plombiers-490515)
+PENNYLANE_API_KEY=xxx        # Bearer token Pennylane (facturation / CA)
 ```
 
 ## Analytics
@@ -199,6 +213,52 @@ Les jours antérieurs à aujourd'hui sont grisés et non cliquables sur le calen
 - Demi-journée dispo = couleur du tier à opacity-20
 - Journée complète réservée = cellule disabled `bg-tier-booked/40`
 - La disponibilité est déterminée par Google Calendar (source of truth)
+
+## Pennylane — Facturation & CA
+- **API :** `https://app.pennylane.com/api/external/v2` — auth Bearer token
+- **Endpoint principal :** `GET /customer_invoices` — pagination cursor-based (page_size=100)
+- **Rate limit :** 2 req/s (invoices), 4 req/s (autres). Retry auto sur 429.
+- **Statuts facture :** `paid`, `upcoming`, `late` = actives. `cancelled`, `archived`, `incomplete` = ignorées.
+- **Avoirs :** status=cancelled avec montant négatif → ignorés (netted avec la facture annulée)
+- **Champs utilisés :** id, invoice_number, label (→ nom client), pdf_invoice_subject (→ objet), date, status, paid, currency_amount_before_tax (montant HT)
+- **Montants :** tout en HT
+
+## Dashboard Finances (`/admin/finances`)
+- **Page :** `src/app/admin/finances/page.tsx` → composant `FinancesDashboard.tsx`
+- **Navigation :** bouton "Finances" dans la toolbar admin (AdminCalendar.tsx), à côté de Projections
+- **Auth :** même auth admin que le reste (sessionStorage + ADMIN_PASSWORD)
+
+### Sources de CA
+- **CA Facturé (Pennylane)** : somme HT des factures actives (paid + upcoming + late) par mois
+- **CA Encaissé (Pennylane)** : somme HT des factures paid=true uniquement
+- **CA Manuel** : saisie manuelle pour les mois sans Pennylane (2025, jan-fév 2026). Cumulé avec Pennylane.
+- **CA Prévisionnel** : saisie manuelle
+
+### Logique Résultat (cascade par statut)
+- `Réalisé` → (CA Encaissé + CA Manuel) − Charges. Toujours calculé même si CA=0.
+- `En cours` → (CA Facturé + CA Manuel) − Charges. Fallback CA Prévisionnel si les deux = 0.
+- `Prévisionnel` → CA Prévisionnel − Charges. Calculé seulement si CA > 0.
+- **Cumul** = somme progressive des résultats de janvier au mois courant (uniquement mois avec données)
+
+### Réattribution de factures
+- Une facture Pennylane peut être réattribuée à un autre mois (ex: facturée en avril pour un événement en juin)
+- Overrides stockés en KV : `finances:invoice-overrides:YYYY` → `{invoiceId: month}`
+- API : `POST /api/finances/invoice-override` avec `{year, invoiceId, month}`
+- UI : tiroir factures sous chaque mois, select "Attribué à" par facture
+
+### Persistance KV
+- `finances:YYYY` → 12 objets FinanceMonth (statut, chargesFixes, caManuel, caPrevisionnel, chargesVar)
+- `finances:invoice-overrides:YYYY` → overrides de mois par invoiceId
+- Charges fixes par défaut : 15 122 €/mois (février : 15 055 €)
+
+### Fonctionnalités
+- 4 cartes synthèse (Encaissé YTD, Prévisionnel, Charges, Résultat)
+- Graphique Chart.js barres (encaissé/facturé/manuel/charges par mois)
+- Tableau 12 mois : statut cliquable, charges variables expandable, CA Manuel/Prévisionnel éditables
+- Tiroir factures Pennylane par mois (clic sur CA Facturé) : client, objet, montant, statut, réattribution
+- Sélecteur année (← 2025 / 2026 →)
+- Filtres période (Année, T1, T2, T3, T4, S1, S2)
+- Export CSV, Réinitialiser (avec confirmation), bouton Synchro Pennylane
 
 ## Convention
 - Pas de border-radius (esthétique brutaliste)
