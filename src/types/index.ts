@@ -66,3 +66,49 @@ export const TIME_SLOT_LABELS: Record<TimeSlot, string> = {
   "apres-midi": "Après-midi (13h-19h)",
   "journee-complete": "Journée complète (7h-23h)",
 };
+
+// ── Finances Dashboard ──
+
+export type FinanceStatus = "realized" | "in-progress" | "planned";
+
+export interface ChargesVariables {
+  menage: number;
+  fb: number;
+  frais: number;
+  autres: number;
+}
+
+export interface FinanceMonth {
+  year: number;
+  month: number; // 1-12
+  status: FinanceStatus;
+  chargesFixes: number;
+  caManuel: number; // CA saisi à la main (hors Pennylane)
+  caPrevisionnel: number;
+  chargesVar: ChargesVariables;
+  updatedAt?: string;
+  updatedBy?: string;
+}
+
+export interface PennylaneMonthData {
+  caFacture: number; // HT — all non-cancelled invoices
+  caEncaisse: number; // HT — paid invoices only
+  invoiceCount: number;
+}
+
+export interface InvoiceItem {
+  id: number;
+  invoiceNumber: string;
+  clientName: string;
+  subject: string;
+  date: string;
+  status: string;
+  paid: boolean;
+  amountHT: number;
+  attributedMonth: number;
+}
+
+export interface FinanceMonthWithPennylane extends FinanceMonth {
+  pennylane: PennylaneMonthData;
+  invoices: InvoiceItem[];
+}

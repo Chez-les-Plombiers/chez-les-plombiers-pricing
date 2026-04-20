@@ -9,7 +9,7 @@ import { getMonthNameFR, getDayLetters, getISODayOfWeek, getDayOfMonth } from "@
 import { cn } from "@/lib/utils";
 import { AdminDayEditor } from "./AdminDayEditor";
 import { AdminBulkEditor } from "./AdminBulkEditor";
-import { Layers, BarChart3, MessageSquare, RefreshCw, Lock, TrendingUp, ChevronDown, ChevronUp, Phone, Mail, Building2, Calendar, Users, Clock } from "lucide-react";
+import { Layers, BarChart3, MessageSquare, RefreshCw, Lock, TrendingUp, ChevronDown, ChevronUp, Phone, Mail, Building2, Calendar, Users, Clock, Wallet } from "lucide-react";
 
 interface AdminCalendarProps {
   token: string;
@@ -171,6 +171,13 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
         >
           <TrendingUp className="h-3 w-3" />
           Projections
+        </Link>
+        <Link
+          href="/admin/finances"
+          className="flex items-center gap-2 border border-border px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-muted transition-colors hover:border-accent hover:text-accent"
+        >
+          <Wallet className="h-3 w-3" />
+          Finances
         </Link>
         <button
           onClick={fetchPricing}

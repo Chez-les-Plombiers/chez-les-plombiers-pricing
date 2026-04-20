@@ -1,5 +1,6 @@
 import { Redis } from "@upstash/redis";
-import type { PricingOverride, QuoteRequest, AnalyticsEvent } from "@/types";
+import type { PricingOverride, QuoteRequest, AnalyticsEvent, FinanceMonth } from "@/types";
+import { buildDefaultYear } from "./finance-defaults";
 
 function getRedis(): Redis | null {
   const url = process.env.KV_REST_API_URL;
@@ -84,6 +85,73 @@ export async function setCalendarPassword(password: string): Promise<void> {
   const redis = getRedis();
   if (!redis) return;
   await redis.set(CALENDAR_PASSWORD_KEY, password);
+}
+
+// --- Invoice month overrides ---
+
+const INVOICE_OVERRIDES_KEY = (year: number) => `finances:invoice-overrides:${year}`;
+
+export async function getInvoiceOverrides(
+  year: number
+): Promise<Record<number, number>> {
+  const redis = getRedis();
+  if (!redis) return {};
+  const data = await redis.get<Record<number, number>>(
+    INVOICE_OVERRIDES_KEY(year)
+  );
+  return data || {};
+}
+
+export async function setInvoiceOverride(
+  year: number,
+  invoiceId: number,
+  month: number
+): Promise<Record<number, number>> {
+  const redis = getRedis();
+  const overrides = await getInvoiceOverrides(year);
+  overrides[invoiceId] = month;
+  if (redis) await redis.set(INVOICE_OVERRIDES_KEY(year), overrides);
+  return overrides;
+}
+
+// --- Finances ---
+
+const FINANCES_KEY = (year: number) => `finances:${year}`;
+
+export async function getFinances(year: number): Promise<FinanceMonth[]> {
+  const redis = getRedis();
+  if (!redis) return buildDefaultYear(year);
+  const data = await redis.get<FinanceMonth[]>(FINANCES_KEY(year));
+  if (!data || data.length !== 12) return buildDefaultYear(year);
+  // Migrate: add caManuel if missing (backward compat with pre-caManuel records)
+  return data.map((m) => ({ ...m, caManuel: m.caManuel ?? 0 }));
+}
+
+export async function updateFinanceMonth(
+  year: number,
+  month: number,
+  updates: Partial<FinanceMonth>
+): Promise<FinanceMonth[]> {
+  const redis = getRedis();
+  const months = await getFinances(year);
+  const idx = months.findIndex((m) => m.month === month);
+  if (idx === -1) return months;
+  months[idx] = {
+    ...months[idx],
+    ...updates,
+    year,
+    month,
+    updatedAt: new Date().toISOString(),
+  };
+  if (redis) await redis.set(FINANCES_KEY(year), months);
+  return months;
+}
+
+export async function resetFinances(year: number): Promise<FinanceMonth[]> {
+  const redis = getRedis();
+  const defaults = buildDefaultYear(year);
+  if (redis) await redis.set(FINANCES_KEY(year), defaults);
+  return defaults;
 }
 
 // --- Analytics ---

@@ -11,11 +11,13 @@
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
     "@upstash/redis": "^1.36.2",
+    "chart.js": "^4.5.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.563.0",
     "next": "16.1.6",
     "react": "19.2.3",
+    "react-chartjs-2": "^5.3.1",
     "react-dom": "19.2.3",
     "recharts": "^3.7.0",
     "resend": "^6.9.4",
