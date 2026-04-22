@@ -71,21 +71,12 @@ export const TIME_SLOT_LABELS: Record<TimeSlot, string> = {
 
 export type FinanceStatus = "realized" | "in-progress" | "planned";
 
-export interface ChargesVariables {
-  menage: number;
-  fb: number;
-  frais: number;
-  autres: number;
-}
-
 export interface FinanceMonth {
   year: number;
   month: number; // 1-12
   status: FinanceStatus;
   chargesFixes: number;
-  caManuel: number; // CA saisi à la main (hors Pennylane)
   caPrevisionnel: number;
-  chargesVar: ChargesVariables;
   updatedAt?: string;
   updatedBy?: string;
 }
@@ -111,4 +102,14 @@ export interface InvoiceItem {
 export interface FinanceMonthWithPennylane extends FinanceMonth {
   pennylane: PennylaneMonthData;
   invoices: InvoiceItem[];
+}
+
+// ── Charges Fixes (spreadsheet) ──
+
+export interface ChargePoste {
+  id: string;
+  label: string;
+  tvaRate: number; // 0, 0.055, 0.10, 0.20
+  inputMode: "ht" | "ttc";
+  amounts: Record<number, number>; // month (1-12) → amount in HT
 }

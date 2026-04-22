@@ -103,10 +103,14 @@ export async function getPennylaneData(
     pages++;
   } while (cursor && pages < 20);
 
-  // Filter to year, skip cancelled/archived/incomplete
+  // Filter to year, skip cancelled/archived/incomplete, skip cautions
   const active = all.filter((inv) => {
     if (!inv.date || !inv.date.startsWith(`${year}-`)) return false;
-    return !["cancelled", "archived", "incomplete"].includes(inv.status);
+    if (["cancelled", "archived", "incomplete"].includes(inv.status)) return false;
+    // Exclude caution / dépôt de garantie (not revenue)
+    const labelLower = (inv.label + " " + inv.pdf_invoice_subject).toLowerCase();
+    if (labelLower.includes("caution") || labelLower.includes("dépôt de garantie") || labelLower.includes("depot de garantie")) return false;
+    return true;
   });
 
   // Build clean invoice list

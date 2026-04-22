@@ -7,11 +7,16 @@ const MONTH_NAMES = [
   "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
 ];
 
-const STATUS_LABELS: Record<string, string> = {
-  realized: "Réalisé",
-  "in-progress": "En cours",
-  planned: "Prévisionnel",
-};
+function autoStatus(month: number, year: number): string {
+  const now = new Date();
+  const cy = now.getFullYear();
+  const cm = now.getMonth() + 1;
+  if (year < cy) return "Réalisé";
+  if (year > cy) return "Prévisionnel";
+  if (month < cm) return "Réalisé";
+  if (month === cm) return "En cours";
+  return "Prévisionnel";
+}
 
 export const dynamic = "force-dynamic";
 
@@ -31,36 +36,26 @@ export async function GET(request: Request) {
     ]);
 
     const header =
-      "Mois,Statut,Charges fixes,Charges variables,CA Manuel,CA Facturé (Pennylane),CA Encaissé (Pennylane),CA Prévisionnel,Résultat,Cumul Résultat\n";
+      "Mois,Statut,Charges,CA (Pennylane),CA Prévisionnel,Résultat,Cumul Résultat\n";
 
     let cumul = 0;
     const rows = months
       .map((m) => {
         const p = pennylane?.[m.month] ?? { caFacture: 0, caEncaisse: 0 };
-        const varTotal =
-          m.chargesVar.menage +
-          m.chargesVar.fb +
-          m.chargesVar.frais +
-          m.chargesVar.autres;
-        const totalCharges = m.chargesFixes + varTotal;
+        const status = autoStatus(m.month, year);
 
-        const caManuel = m.caManuel ?? 0;
-        let caEffectif = m.caPrevisionnel;
-        if (m.status === "realized") caEffectif = p.caEncaisse + caManuel;
-        else if (m.status === "in-progress") caEffectif = (p.caFacture || 0) + caManuel || m.caPrevisionnel;
+        let ca = m.caPrevisionnel;
+        if (status === "Réalisé") ca = p.caEncaisse;
+        else if (status === "En cours") ca = p.caFacture > 0 ? p.caFacture : m.caPrevisionnel;
 
-        const hasData = m.status === "realized" || caEffectif > 0;
-        const resultat = hasData ? caEffectif - totalCharges : 0;
-        cumul += hasData ? resultat : 0;
+        const resultat = ca - m.chargesFixes;
+        cumul += resultat;
 
         return [
           MONTH_NAMES[m.month - 1],
-          STATUS_LABELS[m.status] || m.status,
+          status,
           m.chargesFixes,
-          varTotal,
-          caManuel,
-          p.caFacture,
-          p.caEncaisse,
+          status === "Réalisé" ? p.caEncaisse : p.caFacture,
           m.caPrevisionnel,
           resultat,
           cumul,

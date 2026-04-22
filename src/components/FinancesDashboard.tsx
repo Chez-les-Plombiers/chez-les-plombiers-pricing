@@ -7,33 +7,22 @@ import {
   RefreshCw,
   Download,
   RotateCcw,
-  ChevronDown,
-  ChevronUp,
   ChevronLeft,
   ChevronRight,
   AlertTriangle,
   TrendingDown,
-  PenLine,
+  Settings2,
 } from "lucide-react";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Tooltip,
-  type TooltipItem,
-} from "chart.js";
-import { Bar } from "react-chartjs-2";
 import { AdminLogin } from "./AdminLogin";
 import { Navbar } from "./Navbar";
+import { CumulativeChart, calculateBreakEvenMonth } from "./CumulativeChart";
+import type { CumulativeMonthData } from "./CumulativeChart";
 import type {
   FinanceMonthWithPennylane,
   FinanceStatus,
-  ChargesVariables,
   InvoiceItem,
+  ChargePoste,
 } from "@/types";
-
-ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip);
 
 const MONTH_NAMES = [
   "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
@@ -45,11 +34,10 @@ const MONTH_SHORT = [
   "Juil", "Août", "Sept", "Oct", "Nov", "Déc",
 ];
 
-const STATUS_CYCLE: FinanceStatus[] = ["realized", "in-progress", "planned"];
 const STATUS_LABELS: Record<FinanceStatus, string> = {
   realized: "✓ Réalisé",
   "in-progress": "● En cours",
-  planned: "○ Prévisionnel",
+  planned: "○ Prévi.",
 };
 const STATUS_CLASSES: Record<FinanceStatus, string> = {
   realized: "bg-[rgba(92,184,124,0.12)] text-[#5cb87c]",
@@ -67,6 +55,8 @@ const PERIOD_FILTERS: { key: PeriodFilter; label: string; months: number[] }[] =
   { key: "h1",  label: "S1",    months: [1,2,3,4,5,6] },
   { key: "h2",  label: "S2",    months: [7,8,9,10,11,12] },
 ];
+
+// ── Helpers ──
 
 function formatEur(n: number): string {
   if (n === 0) return "—";
@@ -90,33 +80,50 @@ function formatSigned(n: number): string {
   );
 }
 
-function totalChargesVar(cv: ChargesVariables): number {
-  return cv.menage + cv.fb + cv.frais + cv.autres;
+/** Compute auto status based on current date */
+function autoStatus(month: number, year: number): FinanceStatus {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1; // 1-12
+  if (year < currentYear) return "realized";
+  if (year > currentYear) return "planned";
+  if (month < currentMonth) return "realized";
+  if (month === currentMonth) return "in-progress";
+  return "planned";
 }
 
-function totalCharges(m: FinanceMonthWithPennylane): number {
-  return m.chargesFixes + totalChargesVar(m.chargesVar);
-}
-
+/** Effective CA for a month — single source: Pennylane (attributed) */
 function effectiveCA(m: FinanceMonthWithPennylane): number {
-  const manuel = m.caManuel ?? 0;
-  if (m.status === "realized") return m.pennylane.caEncaisse + manuel;
-  if (m.status === "in-progress") {
-    const pennylane = m.pennylane.caFacture > 0 ? m.pennylane.caFacture : 0;
-    return (pennylane + manuel) || m.caPrevisionnel;
+  const status = autoStatus(m.month, m.year);
+  if (status === "realized") return m.pennylane.caEncaisse;
+  if (status === "in-progress") {
+    return m.pennylane.caFacture > 0 ? m.pennylane.caFacture : m.caPrevisionnel;
   }
   return m.caPrevisionnel;
 }
 
-function hasCAData(m: FinanceMonthWithPennylane): boolean {
-  // "Réalisé" months always count (they're closed, even if CA=0 → real loss)
-  if (m.status === "realized") return true;
-  return effectiveCA(m) > 0;
+/** Should CA Prévisionnel be shown? Only if no real CA exists yet */
+function showPrevisionnel(m: FinanceMonthWithPennylane): boolean {
+  return m.pennylane.caFacture === 0 && m.pennylane.caEncaisse === 0;
 }
 
+/** Monthly result = CA - charges (always computed, even if CA=0) */
 function resultat(m: FinanceMonthWithPennylane): number {
-  if (!hasCAData(m)) return 0;
-  return effectiveCA(m) - totalCharges(m);
+  return effectiveCA(m) - m.chargesFixes;
+}
+
+/** Convert dashboard data to CumulativeChart format */
+function toCumulativeMonths(data: FinanceMonthWithPennylane[]): CumulativeMonthData[] {
+  return data.map((m) => {
+    const status = autoStatus(m.month, m.year);
+    return {
+      month: m.month,
+      caRealise: status === "realized" ? m.pennylane.caEncaisse : m.pennylane.caFacture,
+      caPrevisionnel: m.caPrevisionnel,
+      charges: m.chargesFixes,
+      status,
+    };
+  });
 }
 
 // ─── Component ──────────────────────────────────────────────────────────────
@@ -161,8 +168,8 @@ function FinancesContent({
   const [data, setData] = useState<FinanceMonthWithPennylane[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [expandedInvoices, setExpandedInvoices] = useState<Set<number>>(new Set());
+  const [showChargesEditor, setShowChargesEditor] = useState(false);
   const saveTimeout = useRef<Record<string, NodeJS.Timeout>>({});
 
   const fetchData = useCallback(async () => {
@@ -185,7 +192,6 @@ function FinancesContent({
 
   const patchMonth = useCallback(
     (month: number, updates: Record<string, unknown>) => {
-      // Optimistic update
       setData((prev) => {
         if (!prev) return prev;
         return prev.map((m) =>
@@ -193,7 +199,6 @@ function FinancesContent({
         );
       });
 
-      // Debounced save
       const key = `${month}`;
       if (saveTimeout.current[key]) clearTimeout(saveTimeout.current[key]);
       saveTimeout.current[key] = setTimeout(async () => {
@@ -239,24 +244,6 @@ function FinancesContent({
     URL.revokeObjectURL(url);
   }, [token, year]);
 
-  const cycleStatus = useCallback(
-    (month: number, current: FinanceStatus) => {
-      const idx = STATUS_CYCLE.indexOf(current);
-      const next = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
-      patchMonth(month, { status: next });
-    },
-    [patchMonth]
-  );
-
-  const toggleExpand = useCallback((month: number) => {
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(month)) next.delete(month);
-      else next.add(month);
-      return next;
-    });
-  }, []);
-
   const toggleInvoices = useCallback((month: number) => {
     setExpandedInvoices((prev) => {
       const next = new Set(prev);
@@ -296,17 +283,16 @@ function FinancesContent({
   const summaryCards = useMemo(() => {
     if (!filteredData) return null;
     const totalEncaisse = filteredData.reduce(
-      (s, m) => s + m.pennylane.caEncaisse + (m.caManuel ?? 0), 0
+      (s, m) => s + m.pennylane.caEncaisse, 0
     );
-    const totalCA = filteredData.reduce((s, m) => s + effectiveCA(m), 0);
-    const totalCh = filteredData.reduce((s, m) => s + totalCharges(m), 0);
-    const totalRes = totalCA - totalCh;
-    const nbMoisCA = filteredData.filter(
-      (m) => m.pennylane.caEncaisse > 0 || (m.caManuel ?? 0) > 0
-    ).length;
+    const cumulResult = filteredData.reduce((s, m) => s + resultat(m), 0);
+    const totalPrevRestant = filteredData
+      .filter((m) => autoStatus(m.month, m.year) === "planned")
+      .reduce((s, m) => s + m.caPrevisionnel, 0);
+    const breakEven = calculateBreakEvenMonth(toCumulativeMonths(data ?? []));
 
-    return { totalEncaisse, totalCA, totalCh, totalRes, nbMoisCA };
-  }, [filteredData]);
+    return { totalEncaisse, cumulResult, totalPrevRestant, breakEven };
+  }, [filteredData, data]);
 
   if (loading || !data) {
     return (
@@ -331,7 +317,6 @@ function FinancesContent({
             <h1 className="font-mono text-xl font-bold uppercase tracking-widest text-foreground">
               Finances
             </h1>
-            {/* Year selector */}
             <div className="flex items-center gap-1">
               <button
                 onClick={() => { setYear((y) => y - 1); setLoading(true); }}
@@ -371,9 +356,8 @@ function FinancesContent({
         </div>
         <div className="mb-7 flex items-center justify-between">
           <p className="text-xs text-muted">
-            Suivi mensuel — CA facturé & encaissé (Pennylane) + saisie manuelle vs charges.
+            Suivi mensuel — CA Pennylane (attribué par date d&apos;événement) vs charges.
           </p>
-          {/* Period filters */}
           <div className="flex items-center gap-1">
             {PERIOD_FILTERS.map((f) => (
               <button
@@ -395,60 +379,63 @@ function FinancesContent({
         {summaryCards && (
           <div className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
             <SummaryCard
-              label="CA Encaissé YTD"
+              label="CA Réalisé YTD"
               value={formatEur(summaryCards.totalEncaisse)}
-              sub={
-                summaryCards.nbMoisCA > 0
-                  ? `${summaryCards.nbMoisCA} mois comptabilisé${summaryCards.nbMoisCA > 1 ? "s" : ""}`
-                  : "aucun mois saisi"
-              }
+              sub="cumul CA encaissé depuis janvier"
               color="green"
             />
             <SummaryCard
-              label="CA Prévisionnel 2026"
-              value={formatEur(summaryCards.totalCA)}
-              sub="total CA attendu sur l'année"
-              color="gold"
-            />
-            <SummaryCard
-              label="Charges Annuelles"
-              value={formatEur(summaryCards.totalCh)}
-              sub="charges fixes + variables"
-            />
-            <SummaryCard
-              label="Résultat Projeté"
-              value={
-                summaryCards.totalCA > 0
-                  ? formatSigned(summaryCards.totalRes)
-                  : "0 €"
-              }
-              sub="CA prévisionnel − charges"
+              label="Résultat cumulé"
+              value={formatSigned(summaryCards.cumulResult)}
+              sub="CA − charges à ce jour"
               color={
-                summaryCards.totalRes > 0
+                summaryCards.cumulResult > 0
                   ? "green"
-                  : summaryCards.totalRes < 0
+                  : summaryCards.cumulResult < 0
                     ? "red"
                     : undefined
               }
             />
+            <SummaryCard
+              label="CA Prévi. restant"
+              value={formatEur(summaryCards.totalPrevRestant)}
+              sub="prévisionnel des mois futurs"
+              color="gold"
+            />
+            <SummaryCard
+              label="Break-even estimé"
+              value={
+                summaryCards.breakEven
+                  ? summaryCards.breakEven.label + " " + year
+                  : "Non atteint"
+              }
+              sub={
+                summaryCards.breakEven
+                  ? "date projetée de rentabilité"
+                  : "CA insuffisant pour couvrir les charges"
+              }
+              color={summaryCards.breakEven ? "gold" : "red"}
+            />
           </div>
         )}
 
-        {/* Chart */}
+        {/* Chart placeholder — will be replaced by CumulativeChart */}
         <div className="mb-6 border border-border bg-card p-5">
           <div className="mb-4 flex items-center justify-between">
             <span className="font-mono text-[10px] uppercase tracking-widest text-muted">
-              CA Mensuel vs Charges
+              Cumul CA vs Charges annuelles
             </span>
             <div className="flex items-center gap-4">
-              <LegendDot color="#5cb87c" label="CA encaissé" />
-              <LegendDot color="#c9a84c" label="CA facturé" />
-              <LegendDot color="rgba(147,130,220,0.7)" label="CA manuel" />
-              <LegendDot color="rgba(255,255,255,0.15)" label="Charges" />
+              <LegendDot color="#5cb87c" label="CA réalisé (cumul)" />
+              <LegendDot color="#c9a84c" label="Projection prévi." />
+              <LegendDot color="rgba(255,255,255,0.25)" label="Charges annuelles" />
             </div>
           </div>
-          <div className="h-[180px]">
-            <FinancesChart data={data} />
+          <div className="h-[200px]">
+            <CumulativeChart
+              months={toCumulativeMonths(data)}
+              year={year}
+            />
           </div>
         </div>
 
@@ -465,6 +452,13 @@ function FinancesContent({
               )}
             </span>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowChargesEditor(true)}
+                className="flex items-center gap-1.5 border border-border px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-muted transition-colors hover:border-accent hover:text-accent"
+              >
+                <Settings2 className="h-3 w-3" />
+                Charges fixes
+              </button>
               <button
                 onClick={handleSync}
                 disabled={syncing}
@@ -500,29 +494,17 @@ function FinancesContent({
                   <th className="w-[100px] border-b border-border px-3.5 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted">
                     Mois
                   </th>
-                  <th className="w-[130px] border-b border-border px-3.5 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted">
+                  <th className="w-[110px] border-b border-border px-3.5 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted">
                     Statut
                   </th>
                   <th className="border-b border-border px-3.5 py-2.5 text-right font-mono text-[10px] uppercase tracking-wider text-muted">
-                    Charges fixes
-                  </th>
-                  <th className="border-b border-border px-3.5 py-2.5 text-right font-mono text-[10px] uppercase tracking-wider text-muted">
-                    + Variables
+                    Charges
                   </th>
                   <th className="border-b border-border px-3.5 py-2.5 text-right font-mono text-[10px] uppercase tracking-wider text-[#5cb87c]">
-                    CA Encaissé
-                  </th>
-                  <th className="border-b border-border px-3.5 py-2.5 text-right font-mono text-[10px] uppercase tracking-wider text-[#c9a84c]">
-                    CA Facturé
-                  </th>
-                  <th className="border-b border-border px-3.5 py-2.5 text-right font-mono text-[10px] uppercase tracking-wider text-foreground">
-                    <span className="flex items-center justify-end gap-1">
-                      <PenLine className="h-3 w-3" />
-                      CA Manuel
-                    </span>
+                    CA
                   </th>
                   <th className="border-b border-border px-3.5 py-2.5 text-right font-mono text-[10px] uppercase tracking-wider text-muted">
-                    CA Prévisionnel
+                    CA Prévi.
                   </th>
                   <th className="border-b border-border px-3.5 py-2.5 text-right font-mono text-[10px] uppercase tracking-wider text-muted">
                     Résultat
@@ -536,10 +518,9 @@ function FinancesContent({
               <tbody>
                 <MonthRows
                   data={filteredData ?? []}
-                  expanded={expanded}
+                  allData={data}
+                  year={year}
                   expandedInvoices={expandedInvoices}
-                  onCycleStatus={cycleStatus}
-                  onToggleExpand={toggleExpand}
                   onToggleInvoices={toggleInvoices}
                   onReattribute={reattributeInvoice}
                   onPatch={patchMonth}
@@ -551,6 +532,16 @@ function FinancesContent({
             </table>
           </div>
         </div>
+
+        {/* Charges Fixes Editor Modal */}
+        {showChargesEditor && (
+          <ChargesFixesModal
+            year={year}
+            token={token}
+            onClose={() => setShowChargesEditor(false)}
+            onSaved={fetchData}
+          />
+        )}
       </main>
     </div>
   );
@@ -602,160 +593,56 @@ function LegendDot({ color, label }: { color: string; label: string }) {
   );
 }
 
-// ─── Chart ──────────────────────────────────────────────────────────────────
-
-function FinancesChart({ data }: { data: FinanceMonthWithPennylane[] }) {
-  const chartData = useMemo(() => {
-    // Build full 12-month arrays, fill gaps with null for months not in filtered data
-    const byMonth = new Map(data.map((m) => [m.month, m]));
-    const labels: string[] = [];
-    const encaisse: (number | null)[] = [];
-    const facture: (number | null)[] = [];
-    const manuel: (number | null)[] = [];
-    const charges: (number | null)[] = [];
-
-    for (let i = 0; i < 12; i++) {
-      const m = byMonth.get(i + 1);
-      labels.push(MONTH_SHORT[i]);
-      if (m) {
-        encaisse.push(m.pennylane.caEncaisse || null);
-        facture.push(m.pennylane.caFacture || null);
-        manuel.push((m.caManuel ?? 0) || null);
-        charges.push(totalCharges(m));
-      } else {
-        encaisse.push(null);
-        facture.push(null);
-        manuel.push(null);
-        charges.push(null);
-      }
-    }
-
-    return {
-      labels,
-      datasets: [
-        { label: "CA Encaissé", data: encaisse, backgroundColor: "rgba(92,184,124,0.8)" },
-        { label: "CA Facturé", data: facture, backgroundColor: "rgba(201,168,76,0.65)" },
-        { label: "CA Manuel", data: manuel, backgroundColor: "rgba(147,130,220,0.7)" },
-        { label: "Charges", data: charges, backgroundColor: "rgba(255,255,255,0.08)" },
-      ],
-    };
-  }, [data]);
-
-  const options = useMemo(
-    () => ({
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: "#2a2a2a",
-          titleColor: "#888",
-          bodyColor: "#e8e4dc",
-          borderColor: "rgba(255,255,255,0.1)",
-          borderWidth: 1,
-          callbacks: {
-            label: (ctx: TooltipItem<"bar">) => {
-              const v = ctx.raw as number | null;
-              if (!v) return "";
-              return ` ${ctx.dataset.label ?? ""} : ${formatEur(v)}`;
-            },
-          },
-        },
-      },
-      scales: {
-        x: {
-          grid: { color: "rgba(255,255,255,0.04)" },
-          ticks: {
-            color: "#888",
-            font: { family: "Space Mono", size: 11 },
-          },
-        },
-        y: {
-          grid: { color: "rgba(255,255,255,0.04)" },
-          ticks: {
-            color: "#888",
-            font: { family: "Space Mono", size: 10 },
-            callback: (v: string | number) => {
-              const num = typeof v === "string" ? parseFloat(v) : v;
-              return num >= 1000 ? num / 1000 + "k" : num;
-            },
-          },
-          beginAtZero: true,
-        },
-      },
-    }),
-    []
-  );
-
-  return <Bar data={chartData} options={options} />;
-}
-
 // ─── Month Rows ─────────────────────────────────────────────────────────────
 
 function MonthRows({
   data,
-  expanded,
+  allData,
+  year,
   expandedInvoices,
-  onCycleStatus,
-  onToggleExpand,
   onToggleInvoices,
   onReattribute,
   onPatch,
 }: {
   data: FinanceMonthWithPennylane[];
-  expanded: Set<number>;
+  allData: FinanceMonthWithPennylane[];
+  year: number;
   expandedInvoices: Set<number>;
-  onCycleStatus: (month: number, current: FinanceStatus) => void;
-  onToggleExpand: (month: number) => void;
   onToggleInvoices: (month: number) => void;
   onReattribute: (invoiceId: number, newMonth: number) => void;
   onPatch: (month: number, updates: Record<string, unknown>) => void;
 }) {
-  // Pre-compute cumulative results (avoids mutation during render)
+  // BUG #1 fix: cumul includes ALL months, charges always deducted
   const cumulByMonth = useMemo(() => {
     const result: Record<number, number> = {};
     let cumul = 0;
-    for (const m of data) {
-      const has = hasCAData(m);
-      const res = resultat(m);
-      cumul += has ? res : 0;
+    // Use allData (not filtered) for correct cumul calculation
+    for (const m of allData) {
+      cumul += resultat(m);
       result[m.month] = cumul;
     }
     return result;
-  }, [data]);
+  }, [allData]);
 
   return (
     <>
       {data.map((m) => {
-        const charV = totalChargesVar(m.chargesVar);
+        const status = autoStatus(m.month, year);
         const res = resultat(m);
-        const has = hasCAData(m);
         const ca = effectiveCA(m);
-
-        const isExp = expanded.has(m.month);
         const isInvExp = expandedInvoices.has(m.month);
-        const underTarget = has && ca > 0 && ca < totalCharges(m) * 0.8;
-        const noData =
-          m.pennylane.caFacture === 0 &&
-          m.pennylane.caEncaisse === 0 &&
-          (m.caManuel ?? 0) === 0 &&
-          m.caPrevisionnel === 0 &&
-          m.status !== "realized";
+        const underTarget = ca > 0 && ca < m.chargesFixes * 0.8;
 
         return (
           <MonthRow
             key={m.month}
             m={m}
+            status={status}
             cumulRes={cumulByMonth[m.month]}
             res={res}
-            charV={charV}
-            hasData={has}
-            isExp={isExp}
             isInvExp={isInvExp}
             underTarget={underTarget}
-            noData={noData}
-            onCycleStatus={onCycleStatus}
-            onToggleExpand={onToggleExpand}
+            year={year}
             onToggleInvoices={onToggleInvoices}
             onReattribute={onReattribute}
             onPatch={onPatch}
@@ -768,31 +655,23 @@ function MonthRows({
 
 function MonthRow({
   m,
+  status,
   cumulRes,
   res,
-  charV,
-  hasData,
-  isExp,
   isInvExp,
   underTarget,
-  noData,
-  onCycleStatus,
-  onToggleExpand,
+  year,
   onToggleInvoices,
   onReattribute,
   onPatch,
 }: {
   m: FinanceMonthWithPennylane;
+  status: FinanceStatus;
   cumulRes: number;
   res: number;
-  charV: number;
-  hasData: boolean;
-  isExp: boolean;
   isInvExp: boolean;
   underTarget: boolean;
-  noData: boolean;
-  onCycleStatus: (month: number, current: FinanceStatus) => void;
-  onToggleExpand: (month: number) => void;
+  year: number;
   onToggleInvoices: (month: number) => void;
   onReattribute: (invoiceId: number, newMonth: number) => void;
   onPatch: (month: number, updates: Record<string, unknown>) => void;
@@ -801,141 +680,82 @@ function MonthRow({
   const cumulColor =
     cumulRes > 0 ? "text-[#5cb87c]" : cumulRes < 0 ? "text-[#d95f5f]" : "text-muted";
 
+  // BUG #4: show prévisionnel only if no real CA exists yet
+  const showPrev = showPrevisionnel(m);
+
+  // Determine CA display value (Pennylane attributed)
+  const caDisplay =
+    status === "realized"
+      ? m.pennylane.caEncaisse
+      : m.pennylane.caFacture > 0
+        ? m.pennylane.caFacture
+        : 0;
+
   return (
     <>
       <tr className="border-b border-border transition-colors hover:bg-[rgba(255,255,255,0.02)]">
         <td className="px-3.5 py-2.5 font-mono text-[13px] font-bold tracking-wide">
           {MONTH_NAMES[m.month - 1]}
         </td>
+        {/* BUG #2: Status is auto-calculated, not clickable */}
         <td className="px-3.5 py-2.5">
-          <button
-            onClick={() => onCycleStatus(m.month, m.status)}
-            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 font-mono text-[10px] tracking-wide transition-opacity hover:opacity-80 ${STATUS_CLASSES[m.status]}`}
-            title="Cliquer pour changer le statut"
+          <span
+            className={`inline-flex items-center gap-1.5 whitespace-nowrap px-2.5 py-0.5 font-mono text-[10px] tracking-wide ${STATUS_CLASSES[status]}`}
           >
-            {STATUS_LABELS[m.status]}
-          </button>
+            {STATUS_LABELS[status]}
+          </span>
         </td>
         <td className="px-3.5 py-2.5 text-right font-mono text-[13px] text-muted">
           {formatEur(m.chargesFixes)}
         </td>
+        {/* Single CA column */}
         <td className="px-3.5 py-2.5 text-right">
-          <div className="flex items-center justify-end gap-1">
-            {charV > 0 ? (
-              <span className="bg-[rgba(201,168,76,0.12)] px-1.5 py-px font-mono text-[10px] text-[#c9a84c]">
-                +{formatEur(charV)}
-              </span>
-            ) : (
-              <span className="font-mono text-[13px] text-muted">—</span>
-            )}
-            <button
-              onClick={() => onToggleExpand(m.month)}
-              className="p-0.5 text-muted transition-colors hover:text-foreground"
-              title="Détailler les charges variables"
-            >
-              {isExp ? (
-                <ChevronUp className="h-3.5 w-3.5" />
-              ) : (
-                <ChevronDown className="h-3.5 w-3.5" />
-              )}
-            </button>
-          </div>
-        </td>
-        <td className="px-3.5 py-2.5 text-right font-mono text-[13px] text-[#5cb87c]">
-          {m.pennylane.caEncaisse ? formatEur(m.pennylane.caEncaisse) : "—"}
-        </td>
-        <td className="px-3.5 py-2.5 text-right">
-          {m.pennylane.caFacture ? (
+          {caDisplay > 0 ? (
             <button
               onClick={() => onToggleInvoices(m.month)}
-              className="inline-flex items-center gap-1 font-mono text-[13px] text-[#c9a84c] transition-opacity hover:opacity-70"
+              className="inline-flex items-center gap-1 font-mono text-[13px] text-[#5cb87c] transition-opacity hover:opacity-70"
               title={`${m.invoices.length} facture${m.invoices.length > 1 ? "s" : ""} — cliquer pour détailler`}
             >
-              {formatEur(m.pennylane.caFacture)}
+              {formatEur(caDisplay)}
               <span className="text-[9px] text-muted">({m.invoices.length})</span>
             </button>
           ) : (
             <span className="font-mono text-[13px] text-muted">—</span>
           )}
         </td>
+        {/* CA Prévisionnel — BUG #4: hidden when real CA exists */}
         <td className="px-3.5 py-2.5 text-right">
-          <EditableNumber
-            value={m.caManuel ?? 0}
-            onChange={(v) => onPatch(m.month, { caManuel: v })}
-          />
-        </td>
-        <td className="px-3.5 py-2.5 text-right">
-          <EditableNumber
-            value={m.caPrevisionnel}
-            onChange={(v) => onPatch(m.month, { caPrevisionnel: v })}
-          />
+          {showPrev ? (
+            <EditableNumber
+              value={m.caPrevisionnel}
+              onChange={(v) => onPatch(m.month, { caPrevisionnel: v })}
+            />
+          ) : (
+            <span className="font-mono text-[13px] text-muted">—</span>
+          )}
         </td>
         <td className={`px-3.5 py-2.5 text-right font-mono text-[13px] ${resColor}`}>
-          {hasData ? formatSigned(res) : "—"}
+          {formatSigned(res)}
         </td>
         <td className={`px-3.5 py-2.5 text-right font-mono text-[13px] ${cumulColor}`}>
-          {hasData ? formatSigned(cumulRes) : "—"}
+          {formatSigned(cumulRes)}
         </td>
         <td className="px-3.5 py-2.5 text-center">
-          {noData && (
-            <span title="Aucun CA pour ce mois">
-              <AlertTriangle className="inline h-3 w-3 text-muted" />
-            </span>
-          )}
           {underTarget && (
             <span title="CA < 80% des charges">
               <TrendingDown className="inline h-3 w-3 text-[#d95f5f]" />
             </span>
           )}
+          {caDisplay === 0 && status !== "planned" && (
+            <span title="Aucun CA pour ce mois">
+              <AlertTriangle className="inline h-3 w-3 text-muted" />
+            </span>
+          )}
         </td>
       </tr>
-      {isExp && (
-        <tr className="border-b border-border">
-          <td colSpan={11} className="bg-[rgba(0,0,0,0.25)] px-8 py-3">
-            <div className="grid max-w-[680px] grid-cols-4 gap-3">
-              <VarInput
-                label="Ménage"
-                value={m.chargesVar.menage}
-                onChange={(v) =>
-                  onPatch(m.month, {
-                    chargesVar: { ...m.chargesVar, menage: v },
-                  })
-                }
-              />
-              <VarInput
-                label="F&B / Cocktails"
-                value={m.chargesVar.fb}
-                onChange={(v) =>
-                  onPatch(m.month, {
-                    chargesVar: { ...m.chargesVar, fb: v },
-                  })
-                }
-              />
-              <VarInput
-                label="Frais Events"
-                value={m.chargesVar.frais}
-                onChange={(v) =>
-                  onPatch(m.month, {
-                    chargesVar: { ...m.chargesVar, frais: v },
-                  })
-                }
-              />
-              <VarInput
-                label="Autres"
-                value={m.chargesVar.autres}
-                onChange={(v) =>
-                  onPatch(m.month, {
-                    chargesVar: { ...m.chargesVar, autres: v },
-                  })
-                }
-              />
-            </div>
-          </td>
-        </tr>
-      )}
       {isInvExp && m.invoices.length > 0 && (
         <tr className="border-b border-border">
-          <td colSpan={11} className="bg-[rgba(0,0,0,0.25)] px-4 py-3">
+          <td colSpan={8} className="bg-[rgba(0,0,0,0.25)] px-4 py-3">
             <InvoiceDrawer
               invoices={m.invoices}
               currentMonth={m.month}
@@ -951,12 +771,12 @@ function MonthRow({
 // ─── Footer Row ─────────────────────────────────────────────────────────────
 
 function FooterRow({ data, year }: { data: FinanceMonthWithPennylane[]; year: number }) {
-  const totChargesFixes = data.reduce((s, m) => s + m.chargesFixes, 0);
-  const totVar = data.reduce((s, m) => s + totalChargesVar(m.chargesVar), 0);
-  const totEncaisse = data.reduce((s, m) => s + m.pennylane.caEncaisse, 0);
-  const totFacture = data.reduce((s, m) => s + m.pennylane.caFacture, 0);
-  const totManuel = data.reduce((s, m) => s + (m.caManuel ?? 0), 0);
-  const totPrev = data.reduce((s, m) => s + m.caPrevisionnel, 0);
+  const totCharges = data.reduce((s, m) => s + m.chargesFixes, 0);
+  const totCA = data.reduce((s, m) => {
+    const status = autoStatus(m.month, m.year);
+    return s + (status === "realized" ? m.pennylane.caEncaisse : m.pennylane.caFacture);
+  }, 0);
+  const totPrev = data.reduce((s, m) => s + (showPrevisionnel(m) ? m.caPrevisionnel : 0), 0);
   const totRes = data.reduce((s, m) => s + resultat(m), 0);
 
   const resColor =
@@ -968,11 +788,8 @@ function FooterRow({ data, year }: { data: FinanceMonthWithPennylane[]; year: nu
       <td colSpan={2} className={ft}>
         TOTAL {year}
       </td>
-      <td className={`${ft} text-right text-muted`}>{formatEur(totChargesFixes)}</td>
-      <td className={`${ft} text-right text-muted`}>{totVar > 0 ? formatEur(totVar) : "—"}</td>
-      <td className={`${ft} text-right text-[#5cb87c]`}>{formatEur(totEncaisse)}</td>
-      <td className={`${ft} text-right text-[#c9a84c]`}>{formatEur(totFacture)}</td>
-      <td className={`${ft} text-right`}>{formatEur(totManuel)}</td>
+      <td className={`${ft} text-right text-muted`}>{formatEur(totCharges)}</td>
+      <td className={`${ft} text-right text-[#5cb87c]`}>{formatEur(totCA)}</td>
       <td className={`${ft} text-right`}>{formatEur(totPrev)}</td>
       <td className={`${ft} text-right ${resColor}`}>{formatSigned(totRes)}</td>
       <td className={`${ft} text-right ${resColor}`}>{formatSigned(totRes)}</td>
@@ -1013,6 +830,9 @@ function InvoiceDrawer({
               Date facture
             </th>
             <th className="pb-1.5 pr-4 font-mono text-[9px] uppercase tracking-wider text-muted">
+              N° Facture
+            </th>
+            <th className="pb-1.5 pr-4 font-mono text-[9px] uppercase tracking-wider text-muted">
               Statut
             </th>
             <th className="pb-1.5 font-mono text-[9px] uppercase tracking-wider text-muted">
@@ -1040,6 +860,9 @@ function InvoiceDrawer({
               </td>
               <td className="py-1.5 pr-4 font-mono text-[11px] text-muted">
                 {inv.date}
+              </td>
+              <td className="py-1.5 pr-4 font-mono text-[11px] text-muted">
+                {inv.invoiceNumber || "—"}
               </td>
               <td className="py-1.5 pr-4">
                 <span
@@ -1099,31 +922,198 @@ function EditableNumber({
   );
 }
 
-// ─── Variable Charge Input ──────────────────────────────────────────────────
+// ─── Charges Fixes Modal (placeholder, will use ChargesFixesEditor) ─────────
 
-function VarInput({
-  label,
-  value,
-  onChange,
+function ChargesFixesModal({
+  year,
+  token,
+  onClose,
+  onSaved,
 }: {
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
+  year: number;
+  token: string;
+  onClose: () => void;
+  onSaved: () => void;
 }) {
+  const [postes, setPostes] = useState<ChargePoste[] | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/finances/charges-postes?year=${year}`)
+      .then((r) => r.json())
+      .then(setPostes);
+  }, [year]);
+
+  const handleSave = async () => {
+    if (!postes) return;
+    setSaving(true);
+    await fetch("/api/finances/charges-postes", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: token,
+      },
+      body: JSON.stringify({ year, postes }),
+    });
+    setSaving(false);
+    onSaved();
+    onClose();
+  };
+
+  if (!postes) return null;
+
+  // Inline ChargesFixesEditor — will be replaced by the agent's component
   return (
-    <div>
-      <label className="mb-1 block font-mono text-[10px] uppercase tracking-wider text-muted">
-        {label}
-      </label>
-      <input
-        type="number"
-        min={0}
-        className="w-full bg-transparent px-2 py-1 font-mono text-[13px] text-foreground outline-none transition-colors hover:bg-surface focus:bg-surface focus:ring-1 focus:ring-[#c9a84c] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
-        value={value || ""}
-        placeholder="—"
-        onFocus={(e) => e.target.select()}
-        onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-      />
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/80 pt-12">
+      <div className="relative w-full max-w-[1200px] border border-border bg-card p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-mono text-sm font-bold uppercase tracking-widest text-foreground">
+            Charges fixes {year}
+          </h2>
+          <button
+            onClick={onClose}
+            className="px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-muted hover:text-foreground"
+          >
+            ✕ Fermer
+          </button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-[12px]">
+            <thead>
+              <tr>
+                <th className="sticky left-0 z-10 bg-card px-2 py-1.5 text-left font-mono text-[9px] uppercase tracking-wider text-muted">
+                  Poste
+                </th>
+                <th className="px-2 py-1.5 text-center font-mono text-[9px] uppercase tracking-wider text-muted">
+                  TVA
+                </th>
+                <th className="px-2 py-1.5 text-center font-mono text-[9px] uppercase tracking-wider text-muted">
+                  Mode
+                </th>
+                {MONTH_SHORT.map((m, i) => (
+                  <th key={i} className="px-1.5 py-1.5 text-right font-mono text-[9px] uppercase tracking-wider text-muted">
+                    {m}
+                  </th>
+                ))}
+                <th className="px-2 py-1.5 text-right font-mono text-[9px] uppercase tracking-wider text-accent">
+                  Total
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {postes.map((poste, pIdx) => {
+                const total = Object.values(poste.amounts).reduce((s, v) => s + v, 0);
+                return (
+                  <tr key={poste.id} className="border-t border-[rgba(255,255,255,0.05)]">
+                    <td className="sticky left-0 z-10 bg-card px-2 py-1 font-mono text-[11px] font-bold text-foreground">
+                      {poste.label}
+                    </td>
+                    <td className="px-2 py-1 text-center">
+                      <select
+                        value={poste.tvaRate}
+                        onChange={(e) => {
+                          const updated = [...postes];
+                          updated[pIdx] = { ...poste, tvaRate: parseFloat(e.target.value) };
+                          setPostes(updated);
+                        }}
+                        className="bg-surface px-1 py-0.5 font-mono text-[10px] text-foreground outline-none"
+                      >
+                        <option value={0.20}>20%</option>
+                        <option value={0.10}>10%</option>
+                        <option value={0.055}>5,5%</option>
+                        <option value={0}>0%</option>
+                      </select>
+                    </td>
+                    <td className="px-2 py-1 text-center">
+                      <button
+                        onClick={() => {
+                          const updated = [...postes];
+                          const newMode = poste.inputMode === "ht" ? "ttc" : "ht";
+                          updated[pIdx] = { ...poste, inputMode: newMode };
+                          setPostes(updated);
+                        }}
+                        className={`px-1.5 py-0.5 font-mono text-[9px] uppercase ${
+                          poste.inputMode === "ht"
+                            ? "bg-[rgba(92,184,124,0.12)] text-[#5cb87c]"
+                            : "bg-[rgba(201,168,76,0.12)] text-[#c9a84c]"
+                        }`}
+                      >
+                        {poste.inputMode.toUpperCase()}
+                      </button>
+                    </td>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                      <td key={month} className="px-1 py-1">
+                        <input
+                          type="number"
+                          className="w-[65px] bg-transparent px-1 py-0.5 text-right font-mono text-[11px] text-foreground outline-none hover:bg-surface focus:bg-surface focus:ring-1 focus:ring-[#c9a84c] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+                          value={
+                            poste.inputMode === "ttc" && poste.tvaRate > 0
+                              ? Math.round((poste.amounts[month] ?? 0) * (1 + poste.tvaRate))
+                              : poste.amounts[month] ?? ""
+                          }
+                          placeholder="—"
+                          onFocus={(e) => e.target.select()}
+                          onChange={(e) => {
+                            const raw = parseFloat(e.target.value) || 0;
+                            const ht =
+                              poste.inputMode === "ttc"
+                                ? Math.round(raw / (1 + poste.tvaRate))
+                                : raw;
+                            const updated = [...postes];
+                            updated[pIdx] = {
+                              ...poste,
+                              amounts: { ...poste.amounts, [month]: ht },
+                            };
+                            setPostes(updated);
+                          }}
+                        />
+                      </td>
+                    ))}
+                    <td className="px-2 py-1 text-right font-mono text-[11px] font-bold text-accent">
+                      {formatEur(total)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-[rgba(255,255,255,0.12)]">
+                <td colSpan={3} className="px-2 py-2 font-mono text-[11px] font-bold text-foreground">
+                  TOTAL
+                </td>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => {
+                  const total = postes.reduce((s, p) => s + (p.amounts[month] ?? 0), 0);
+                  return (
+                    <td key={month} className="px-1 py-2 text-right font-mono text-[11px] font-bold text-foreground">
+                      {formatEur(total)}
+                    </td>
+                  );
+                })}
+                <td className="px-2 py-2 text-right font-mono text-[11px] font-bold text-accent">
+                  {formatEur(postes.reduce((s, p) => s + Object.values(p.amounts).reduce((a, b) => a + b, 0), 0))}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div className="mt-4 flex items-center justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="border border-border px-4 py-1.5 font-mono text-[10px] uppercase tracking-wider text-muted hover:text-foreground"
+          >
+            Annuler
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="border border-accent bg-accent/10 px-4 py-1.5 font-mono text-[10px] uppercase tracking-wider text-accent hover:bg-accent/20 disabled:opacity-50"
+          >
+            {saving ? "Enregistrement..." : "Enregistrer"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

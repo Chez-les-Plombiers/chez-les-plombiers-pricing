@@ -1,12 +1,9 @@
 import { NextResponse } from "next/server";
 import { updateFinanceMonth } from "@/lib/kv";
-import type { FinanceStatus, ChargesVariables } from "@/types";
 
 interface PatchBody {
-  status?: FinanceStatus;
-  caManuel?: number;
   caPrevisionnel?: number;
-  chargesVar?: Partial<ChargesVariables>;
+  chargesFixes?: number;
   updatedBy?: string;
 }
 
@@ -34,11 +31,10 @@ export async function PATCH(
     const body: PatchBody = await request.json();
     const updates: Record<string, unknown> = {};
 
-    if (body.status) updates.status = body.status;
-    if (body.caManuel !== undefined) updates.caManuel = body.caManuel;
     if (body.caPrevisionnel !== undefined)
       updates.caPrevisionnel = body.caPrevisionnel;
-    if (body.chargesVar) updates.chargesVar = body.chargesVar;
+    if (body.chargesFixes !== undefined)
+      updates.chargesFixes = body.chargesFixes;
     if (body.updatedBy) updates.updatedBy = body.updatedBy;
 
     const months = await updateFinanceMonth(year, month, updates);

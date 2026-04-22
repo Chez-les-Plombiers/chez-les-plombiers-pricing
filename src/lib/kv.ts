@@ -1,5 +1,5 @@
 import { Redis } from "@upstash/redis";
-import type { PricingOverride, QuoteRequest, AnalyticsEvent, FinanceMonth } from "@/types";
+import type { PricingOverride, QuoteRequest, AnalyticsEvent, FinanceMonth, ChargePoste } from "@/types";
 import { buildDefaultYear } from "./finance-defaults";
 
 function getRedis(): Redis | null {
@@ -123,8 +123,7 @@ export async function getFinances(year: number): Promise<FinanceMonth[]> {
   if (!redis) return buildDefaultYear(year);
   const data = await redis.get<FinanceMonth[]>(FINANCES_KEY(year));
   if (!data || data.length !== 12) return buildDefaultYear(year);
-  // Migrate: add caManuel if missing (backward compat with pre-caManuel records)
-  return data.map((m) => ({ ...m, caManuel: m.caManuel ?? 0 }));
+  return data;
 }
 
 export async function updateFinanceMonth(
@@ -152,6 +151,22 @@ export async function resetFinances(year: number): Promise<FinanceMonth[]> {
   const defaults = buildDefaultYear(year);
   if (redis) await redis.set(FINANCES_KEY(year), defaults);
   return defaults;
+}
+
+// --- Charges Fixes (spreadsheet) ---
+
+const CHARGES_POSTES_KEY = (year: number) => `finances:charges-postes:${year}`;
+
+export async function getChargesPostes(year: number): Promise<ChargePoste[] | null> {
+  const redis = getRedis();
+  if (!redis) return null;
+  return redis.get<ChargePoste[]>(CHARGES_POSTES_KEY(year));
+}
+
+export async function setChargesPostes(year: number, postes: ChargePoste[]): Promise<void> {
+  const redis = getRedis();
+  if (!redis) return;
+  await redis.set(CHARGES_POSTES_KEY(year), postes);
 }
 
 // --- Analytics ---
