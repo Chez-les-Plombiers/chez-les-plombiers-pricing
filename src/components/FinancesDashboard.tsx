@@ -962,7 +962,28 @@ function ChargesFixesModal({
 
   if (!postes) return null;
 
-  // Inline ChargesFixesEditor — will be replaced by the agent's component
+  const addPoste = () => {
+    if (!postes) return;
+    const id = `poste-${Date.now()}`;
+    setPostes([
+      ...postes,
+      { id, label: "Nouveau poste", tvaRate: 0.20, inputMode: "ht", amounts: {} },
+    ]);
+  };
+
+  const removePoste = (idx: number) => {
+    if (!postes) return;
+    if (!confirm(`Supprimer "${postes[idx].label}" ?`)) return;
+    setPostes(postes.filter((_, i) => i !== idx));
+  };
+
+  const renamePoste = (idx: number, label: string) => {
+    if (!postes) return;
+    const updated = [...postes];
+    updated[idx] = { ...updated[idx], label };
+    setPostes(updated);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/80 pt-12">
       <div className="relative w-full max-w-[1200px] border border-border bg-card p-6">
@@ -985,6 +1006,7 @@ function ChargesFixesModal({
                 <th className="sticky left-0 z-10 bg-card px-2 py-1.5 text-left font-mono text-[9px] uppercase tracking-wider text-muted">
                   Poste
                 </th>
+                <th className="w-[30px] px-1 py-1.5" />
                 <th className="px-2 py-1.5 text-center font-mono text-[9px] uppercase tracking-wider text-muted">
                   TVA
                 </th>
@@ -1005,9 +1027,23 @@ function ChargesFixesModal({
               {postes.map((poste, pIdx) => {
                 const total = Object.values(poste.amounts).reduce((s, v) => s + v, 0);
                 return (
-                  <tr key={poste.id} className="border-t border-[rgba(255,255,255,0.05)]">
-                    <td className="sticky left-0 z-10 bg-card px-2 py-1 font-mono text-[11px] font-bold text-foreground">
-                      {poste.label}
+                  <tr key={poste.id} className="group border-t border-[rgba(255,255,255,0.05)]">
+                    <td className="sticky left-0 z-10 bg-card px-2 py-1">
+                      <input
+                        type="text"
+                        value={poste.label}
+                        onChange={(e) => renamePoste(pIdx, e.target.value)}
+                        className="w-[140px] bg-transparent font-mono text-[11px] font-bold text-foreground outline-none hover:bg-surface focus:bg-surface focus:ring-1 focus:ring-[#c9a84c]"
+                      />
+                    </td>
+                    <td className="px-1 py-1 text-center">
+                      <button
+                        onClick={() => removePoste(pIdx)}
+                        className="hidden text-[#d95f5f] opacity-60 transition-opacity hover:opacity-100 group-hover:inline"
+                        title="Supprimer ce poste"
+                      >
+                        ✕
+                      </button>
                     </td>
                     <td className="px-2 py-1 text-center">
                       <select
@@ -1079,7 +1115,7 @@ function ChargesFixesModal({
             </tbody>
             <tfoot>
               <tr className="border-t-2 border-[rgba(255,255,255,0.12)]">
-                <td colSpan={3} className="px-2 py-2 font-mono text-[11px] font-bold text-foreground">
+                <td colSpan={4} className="px-2 py-2 font-mono text-[11px] font-bold text-foreground">
                   TOTAL
                 </td>
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => {
@@ -1098,20 +1134,28 @@ function ChargesFixesModal({
           </table>
         </div>
 
-        <div className="mt-4 flex items-center justify-end gap-2">
+        <div className="mt-4 flex items-center justify-between">
           <button
-            onClick={onClose}
-            className="border border-border px-4 py-1.5 font-mono text-[10px] uppercase tracking-wider text-muted hover:text-foreground"
+            onClick={addPoste}
+            className="flex items-center gap-1.5 border border-border px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-muted transition-colors hover:border-accent hover:text-accent"
           >
-            Annuler
+            + Ajouter un poste
           </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="border border-accent bg-accent/10 px-4 py-1.5 font-mono text-[10px] uppercase tracking-wider text-accent hover:bg-accent/20 disabled:opacity-50"
-          >
-            {saving ? "Enregistrement..." : "Enregistrer"}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onClose}
+              className="border border-border px-4 py-1.5 font-mono text-[10px] uppercase tracking-wider text-muted hover:text-foreground"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="border border-accent bg-accent/10 px-4 py-1.5 font-mono text-[10px] uppercase tracking-wider text-accent hover:bg-accent/20 disabled:opacity-50"
+            >
+              {saving ? "Enregistrement..." : "Enregistrer"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
