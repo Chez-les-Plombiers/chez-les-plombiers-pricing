@@ -1,25 +1,39 @@
 import { NextResponse } from "next/server";
-import { getFinances, getInvoiceOverrides } from "@/lib/kv";
+import { getFinances, getInvoiceOverrides, getChargesPostes } from "@/lib/kv";
 import { getPennylaneData } from "@/lib/pennylane";
-import type { FinanceMonthWithPennylane } from "@/types";
+import type { FinanceMonthWithPennylane, ChargePoste } from "@/types";
 
 export const dynamic = "force-dynamic";
 
 // Legacy manual CA for months before Pennylane was connected (jan/fév 2026)
-// These were previously in the "CA Manuel" column, now hardcoded.
 const LEGACY_CA_MANUEL: Record<number, Record<number, number>> = {
   2026: { 1: 39_795 },
 };
+
+/** Compute total charges per month from the charges postes spreadsheet */
+function chargesFromPostes(postes: ChargePoste[]): Record<number, number> {
+  const totals: Record<number, number> = {};
+  for (let m = 1; m <= 12; m++) {
+    totals[m] = postes.reduce((sum, p) => sum + (p.amounts[m] ?? 0), 0);
+  }
+  return totals;
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const year = parseInt(searchParams.get("year") || "2026", 10);
 
   try {
-    const [months, overrides] = await Promise.all([
+    const [months, overrides, chargesPostes] = await Promise.all([
       getFinances(year),
       getInvoiceOverrides(year),
+      getChargesPostes(year),
     ]);
+
+    // If charges postes exist in KV, use them as source of truth for chargesFixes
+    const chargesOverrides = chargesPostes
+      ? chargesFromPostes(chargesPostes)
+      : null;
 
     const pennylaneResult = await getPennylaneData(year, overrides).catch(
       () => null
@@ -35,7 +49,6 @@ export async function GET(request: Request) {
         caEncaisse: 0,
         invoiceCount: 0,
       };
-      // Inject legacy manual CA into Pennylane data for pre-Pennylane months
       const legacy = legacyYear[m.month] ?? 0;
       if (legacy > 0) {
         pennylane.caFacture += legacy;
@@ -43,6 +56,8 @@ export async function GET(request: Request) {
       }
       return {
         ...m,
+        // Charges from spreadsheet override the defaults
+        chargesFixes: chargesOverrides?.[m.month] ?? m.chargesFixes,
         pennylane,
         invoices: allInvoices.filter((inv) => inv.attributedMonth === m.month),
       };
