@@ -69,9 +69,9 @@ export async function POST(request: Request) {
       console.error("[Pipedrive] Failed to create deal:", err instanceof Error ? err.message : err);
     }
 
-    // Send email notification to team
+    // Send email notification to team (with price for context)
     try {
-      await sendQuoteNotification(quote);
+      await sendQuoteNotification({ ...quote, totalPrice: parseFloat(body.totalPrice) || undefined });
     } catch (err) {
       console.error("[Email] Failed to send notification:", err instanceof Error ? err.message : err);
     }

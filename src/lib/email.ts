@@ -17,24 +17,46 @@ function getResend(): Resend | null {
 /**
  * Send email notification to the team when a new quote request is submitted.
  */
-export async function sendQuoteNotification(quote: QuoteRequest): Promise<void> {
+const FR_DAYS = ["Dimanche", "Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"];
+const FR_MONTHS = [
+  "janvier", "février", "mars", "avril", "mai", "juin",
+  "juillet", "août", "septembre", "octobre", "novembre", "décembre",
+];
+
+function formatDateWithDay(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00");
+  const dayName = FR_DAYS[d.getDay()];
+  const day = d.getDate();
+  const month = FR_MONTHS[d.getMonth()];
+  const year = d.getFullYear();
+  return `${dayName} ${day === 1 ? "1er" : day} ${month} ${year}`;
+}
+
+function formatPrice(n: number): string {
+  return new Intl.NumberFormat("fr-FR", {
+    style: "currency",
+    currency: "EUR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(n);
+}
+
+export async function sendQuoteNotification(quote: QuoteRequest & { totalPrice?: number }): Promise<void> {
   const resend = getResend();
   if (!resend) {
     console.warn("[Email] RESEND_API_KEY not configured — skipping notification");
     return;
   }
 
-  const [year, month, day] = quote.date.split("-");
-  const dateFr = `${day}/${month}/${year}`;
+  const dateFr = formatDateWithDay(quote.date);
   const numDays = quote.numberOfDays || 1;
 
-  // Build multi-day date range
+  // Build multi-day date range with day names
   let dateRange = dateFr;
   if (numDays > 1) {
     const [qy, qm, qd] = quote.date.split("-").map(Number);
-    const endDate = new Date(Date.UTC(qy, qm - 1, qd + numDays - 1));
-    const endFr = `${String(endDate.getUTCDate()).padStart(2, "0")}/${String(endDate.getUTCMonth() + 1).padStart(2, "0")}/${endDate.getUTCFullYear()}`;
-    dateRange = `${dateFr} → ${endFr}`;
+    const endDateStr = new Date(Date.UTC(qy, qm - 1, qd + numDays - 1)).toISOString().split("T")[0];
+    dateRange = `${dateFr} → ${formatDateWithDay(endDateStr)} (${numDays} jours)`;
   }
 
   const slotLabel = TIME_SLOT_LABELS[quote.timeSlot];
@@ -44,7 +66,8 @@ export async function sendQuoteNotification(quote: QuoteRequest): Promise<void> 
     timeStyle: "short",
   });
 
-  const subject = `Nouvelle demande de devis — ${quote.firstName} ${quote.lastName} — ${dateFr}`;
+  const priceDisplay = quote.totalPrice ? ` — ${formatPrice(quote.totalPrice)} HT` : "";
+  const subject = `Nouvelle demande de devis — ${quote.firstName} ${quote.lastName}${quote.company ? ` (${quote.company})` : ""} — ${dateFr}${priceDisplay}`;
 
   const html = `
 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; color: #1A1A1A;">
@@ -81,8 +104,12 @@ export async function sendQuoteNotification(quote: QuoteRequest): Promise<void> 
       </tr>
       <tr>
         <td style="padding: 8px 0; font-weight: 600; vertical-align: top;">Date${numDays > 1 ? "s" : ""}</td>
-        <td style="padding: 8px 0;">${dateRange}${numDays > 1 ? ` (${numDays} jours)` : ""}</td>
+        <td style="padding: 8px 0;">${dateRange}</td>
       </tr>
+      ${quote.totalPrice ? `<tr>
+        <td style="padding: 8px 0; font-weight: 600; vertical-align: top;">Prix indicatif</td>
+        <td style="padding: 8px 0; color: #C8A96E; font-weight: 700;">${formatPrice(quote.totalPrice)} HT</td>
+      </tr>` : ""}
       <tr>
         <td style="padding: 8px 0; font-weight: 600; vertical-align: top;">Créneau</td>
         <td style="padding: 8px 0;">${slotLabel}</td>

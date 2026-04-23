@@ -155,6 +155,7 @@ export function QuoteForm({ day, allDays, timeSlot, onBack, onSuccess }: QuoteFo
       guestCount: parseInt(form.get("guestCount") as string, 10),
       eventType: form.get("eventType") as string,
       message: form.get("message") as string,
+      totalPrice,
     };
 
     try {
@@ -296,7 +297,8 @@ export function QuoteForm({ day, allDays, timeSlot, onBack, onSuccess }: QuoteFo
               value={companyQuery}
               onChange={(e) => handleCompanyChange(e.target.value)}
               onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-              placeholder="Entreprise"
+              placeholder="Entreprise *"
+              required
               autoComplete="off"
               className="w-full border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"
             />
