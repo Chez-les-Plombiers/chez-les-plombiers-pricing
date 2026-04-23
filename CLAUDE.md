@@ -32,7 +32,7 @@ src/
 │   ├── admin/                      # Panel admin protégé par mot de passe
 │   │   ├── page.tsx / client.tsx   # Dashboard calendrier admin
 │   │   ├── projections/            # Projections financières (scénarios)
-│   │   └── finances/               # Dashboard finances (CA Pennylane + manuel)
+│   │   └── finances/               # Dashboard finances v2 (Pennylane, courbe cumul, charges spreadsheet)
 │   └── api/
 │       ├── admin/auth/             # POST: auth par mot de passe
 │       ├── admin/calendar-password/ # GET/PUT: mot de passe calendrier (KV)
@@ -41,11 +41,12 @@ src/
 │       ├── pricing/[date]/         # PUT/DELETE: modifier/supprimer override
 │       ├── availability/           # GET/PUT: jours réservés
 │       ├── quote/                  # GET: liste devis (admin), POST: créer devis → KV + Pipedrive
-│       ├── finances/               # GET: données 12 mois + factures Pennylane
-│       ├── finances/[year]/[month]/ # PATCH: MAJ statut/CA/charges d'un mois
+│       ├── finances/               # GET: données 12 mois + factures Pennylane + charges postes
+│       ├── finances/[year]/[month]/ # PATCH: MAJ caPrevisionnel/chargesFixes d'un mois
 │       ├── finances/reset/[year]/  # POST: réinitialiser aux valeurs par défaut
 │       ├── finances/export/        # GET: export CSV
 │       ├── finances/invoice-override/ # POST: réattribuer une facture à un autre mois
+│       ├── finances/charges-postes/ # GET/POST: CRUD charges fixes spreadsheet (KV)
 │       ├── ical/                   # GET: flux .ics
 │       ├── analytics/              # GET/POST: vues par jour
 │       ├── webhook/pipedrive/      # POST: webhook Pipedrive (deal stage change → KV)
@@ -64,7 +65,9 @@ src/
 │   ├── AdminCalendar.tsx            # Calendrier admin + analytics + devis + mot de passe
 │   ├── AdminDayEditor.tsx           # Édition prix/tier/dispo d'un jour
 │   ├── AdminBulkEditor.tsx          # Édition en masse (plage dates / jours semaine)
-│   └── FinancesDashboard.tsx        # Dashboard finances (cartes, chart, tableau, tiroirs factures)
+│   ├── FinancesDashboard.tsx        # Dashboard finances v2 (cartes, courbe cumul, tableau, charges modal)
+│   ├── CumulativeChart.tsx          # Courbe cumul CA + break-even (Chart.js Line)
+│   └── ChargesFixesEditor.tsx       # Composant standalone charges (dispo upgrade futur)
 ├── lib/
 │   ├── pricing-engine.ts           # getTierForDate(), getBasePrice(), getBookingWindow(), computeYearPricing()
 │   ├── calendar-data.ts            # Dates 2026 : FW, fériés, vacances, ponts
@@ -223,42 +226,59 @@ Les jours antérieurs à aujourd'hui sont grisés et non cliquables sur le calen
 - **Champs utilisés :** id, invoice_number, label (→ nom client), pdf_invoice_subject (→ objet), date, status, paid, currency_amount_before_tax (montant HT)
 - **Montants :** tout en HT
 
-## Dashboard Finances (`/admin/finances`)
+## Dashboard Finances v2 (`/admin/finances`)
 - **Page :** `src/app/admin/finances/page.tsx` → composant `FinancesDashboard.tsx`
 - **Navigation :** bouton "Finances" dans la toolbar admin (AdminCalendar.tsx), à côté de Projections
 - **Auth :** même auth admin que le reste (sessionStorage + ADMIN_PASSWORD)
+- **Brief :** Etienne v2 (21/04/2026) — 14 items appliqués intégralement
 
 ### Sources de CA
-- **CA Facturé (Pennylane)** : somme HT des factures actives (paid + upcoming + late) par mois
-- **CA Encaissé (Pennylane)** : somme HT des factures paid=true uniquement
-- **CA Manuel** : saisie manuelle pour les mois sans Pennylane (2025, jan-fév 2026). Cumulé avec Pennylane.
-- **CA Prévisionnel** : saisie manuelle
+- **Pennylane** = source unique. Colonne CA unique attribuée par date d'événement (ATTRIBUÉ À).
+- **Filtre cautions** : exclut factures dont libellé contient "caution" ou "dépôt de garantie"
+- **Legacy jan 2026** : 39 795€ HT hardcodé dans `GET /api/finances` (pré-Pennylane)
+- **CA Prévisionnel** : saisie manuelle, masqué automatiquement dès qu'un CA réel Pennylane existe
 
-### Logique Résultat (cascade par statut)
-- `Réalisé` → (CA Encaissé + CA Manuel) − Charges. Toujours calculé même si CA=0.
-- `En cours` → (CA Facturé + CA Manuel) − Charges. Fallback CA Prévisionnel si les deux = 0.
-- `Prévisionnel` → CA Prévisionnel − Charges. Calculé seulement si CA > 0.
-- **Cumul** = somme progressive des résultats de janvier au mois courant (uniquement mois avec données)
+### Statut automatique (non cliquable)
+- `autoStatus(month, year)` : passés → Réalisé, en cours → En cours, futurs → Prévi.
+
+### Logique Résultat
+- Résultat = effectiveCA(m) − chargesFixes (toujours calculé, même CA=0)
+- Cumul = somme progressive de TOUS les mois (charges toujours déduites)
+- Cumul affiché sur tous les mois y compris futurs
+
+### Charges fixes (spreadsheet CRUD)
+- KV `finances:charges-postes:YYYY` → ChargePoste[] (source of truth si présent)
+- Fallback : `DEFAULT_CHARGES_POSTES` dans `finance-defaults.ts`
+- `GET /api/finances` calcule totaux/mois depuis postes → override `chargesFixes`
+- Modal spreadsheet : CRUD postes (ajouter/renommer/supprimer), TVA obligatoire, saisie HT ou TTC
+- 11 postes par défaut (EDF variable/mois, intérêts obligataires 14 700€ en sept)
 
 ### Réattribution de factures
-- Une facture Pennylane peut être réattribuée à un autre mois (ex: facturée en avril pour un événement en juin)
-- Overrides stockés en KV : `finances:invoice-overrides:YYYY` → `{invoiceId: month}`
-- API : `POST /api/finances/invoice-override` avec `{year, invoiceId, month}`
-- UI : tiroir factures sous chaque mois, select "Attribué à" par facture
+- Overrides KV : `finances:invoice-overrides:YYYY` → `{invoiceId: month}`
+- API : `POST /api/finances/invoice-override`
+- UI : tiroir factures avec N° facture, select "Attribué à"
 
 ### Persistance KV
-- `finances:YYYY` → 12 objets FinanceMonth (statut, chargesFixes, caManuel, caPrevisionnel, chargesVar)
-- `finances:invoice-overrides:YYYY` → overrides de mois par invoiceId
-- Charges fixes par défaut : 15 122 €/mois (février : 15 055 €)
+- `finances:YYYY` → 12 objets FinanceMonth (chargesFixes, caPrevisionnel)
+- `finances:invoice-overrides:YYYY` → overrides réattribution
+- `finances:charges-postes:YYYY` → ChargePoste[] (spreadsheet charges)
 
-### Fonctionnalités
-- 4 cartes synthèse (Encaissé YTD, Prévisionnel, Charges, Résultat)
-- Graphique Chart.js barres (encaissé/facturé/manuel/charges par mois)
-- Tableau 12 mois : statut cliquable, charges variables expandable, CA Manuel/Prévisionnel éditables
-- Tiroir factures Pennylane par mois (clic sur CA Facturé) : client, objet, montant, statut, réattribution
-- Sélecteur année (← 2025 / 2026 →)
-- Filtres période (Année, T1, T2, T3, T4, S1, S2)
-- Export CSV, Réinitialiser (avec confirmation), bouton Synchro Pennylane
+### 4 cartes synthèse
+1. CA Réalisé YTD (cumul encaissé)
+2. Résultat cumulé (vert/rouge)
+3. CA Prévi. restant (mois futurs)
+4. Break-even estimé (mois+année ou "Non atteint")
+
+### Graphique
+- Courbe cumul : trait vert réalisé + pointillés dorés projection
+- Ligne grise horizontale : charges annuelles (break-even line)
+- Point d'intersection annoté
+
+### Colonnes tableau
+Mois | Statut (auto) | Charges | CA | CA Prévi. | Résultat | Cumul
+
+### Autres fonctionnalités
+- Sélecteur année, filtres période (T1-T4, S1-S2), export CSV, réinitialiser, synchro
 
 ## Convention
 - Pas de border-radius (esthétique brutaliste)
