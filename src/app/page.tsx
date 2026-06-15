@@ -1,4 +1,5 @@
-import { computeYearPricing } from "@/lib/pricing-engine";
+import type { BookingSlot } from "@/lib/google-calendar";
+import { computeWindowPricing } from "@/lib/pricing-engine";
 import { getAllOverrides } from "@/lib/kv";
 import { getCalendarBookings } from "@/lib/google-calendar";
 import { Navbar } from "@/components/Navbar";
@@ -7,15 +8,32 @@ import { CalendarHeatmap } from "@/components/CalendarHeatmap";
 
 export const dynamic = "force-dynamic";
 
-const YEAR = 2026;
+const WINDOW_MONTHS = 12;
 
 export default async function HomePage() {
-  const [overrides, gcalBookings] = await Promise.all([
+  // Rolling 12-month window starting at the current month.
+  const now = new Date();
+  const startYear = now.getUTCFullYear();
+  const startMonth = now.getUTCMonth(); // 0-11
+
+  const months = Array.from({ length: WINDOW_MONTHS }, (_, i) => {
+    const absoluteMonth = startMonth + i;
+    return {
+      year: startYear + Math.floor(absoluteMonth / 12),
+      month: absoluteMonth % 12,
+    };
+  });
+
+  // Years spanned by the window (1 or 2) — fetch GCal bookings for each.
+  const coveredYears = [...new Set(months.map((m) => m.year))];
+
+  const [overrides, ...gcalByYear] = await Promise.all([
     getAllOverrides(),
-    getCalendarBookings(YEAR),
+    ...coveredYears.map((year) => getCalendarBookings(year)),
   ]);
 
   // Merge Google Calendar bookings into overrides (GCal = source of truth for availability)
+  const gcalBookings: Record<string, BookingSlot> = Object.assign({}, ...gcalByYear);
   for (const [date, booking] of Object.entries(gcalBookings)) {
     const existing = overrides[date] || { date };
     overrides[date] = {
@@ -27,7 +45,7 @@ export default async function HomePage() {
     };
   }
 
-  const days = computeYearPricing(YEAR, overrides);
+  const days = computeWindowPricing(startYear, startMonth, overrides, undefined, WINDOW_MONTHS);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -46,7 +64,7 @@ export default async function HomePage() {
             Cliquez sur un jour pour voir les tarifs détaillés et demander un devis.
           </p>
         </div>
-        <CalendarHeatmap days={days} year={YEAR} />
+        <CalendarHeatmap days={days} months={months} />
       </main>
       <Footer />
     </div>

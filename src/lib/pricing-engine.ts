@@ -149,14 +149,40 @@ export function computeYearPricing(
 }
 
 /**
- * Group pricing data by month.
+ * Compute pricing for a rolling window of months starting at (startYear, startMonth).
+ * The window can span across a year boundary (e.g. juin 2026 → mai 2027).
  */
-export function groupByMonth(days: DayPricing[]): Record<number, DayPricing[]> {
-  const result: Record<number, DayPricing[]> = {};
+export function computeWindowPricing(
+  startYear: number,
+  startMonth: number,
+  overrides: Record<string, PricingOverride> = {},
+  today?: string,
+  monthCount = 12
+): DayPricing[] {
+  const todayStr = today ?? new Date().toISOString().split("T")[0];
+  const days: DayPricing[] = [];
+  for (let i = 0; i < monthCount; i++) {
+    const absoluteMonth = startMonth + i;
+    const year = startYear + Math.floor(absoluteMonth / 12);
+    const month = absoluteMonth % 12;
+    const dates = getDatesInMonth(year, month);
+    for (const dateStr of dates) {
+      days.push(computeDayPricing(dateStr, todayStr, overrides[dateStr]));
+    }
+  }
+  return days;
+}
+
+/**
+ * Group pricing data by month, keyed by "YYYY-MM" so a multi-year window
+ * never collides (e.g. janvier 2026 vs janvier 2027).
+ */
+export function groupByMonth(days: DayPricing[]): Record<string, DayPricing[]> {
+  const result: Record<string, DayPricing[]> = {};
   for (const day of days) {
-    const month = parseInt(day.date.split("-")[1], 10) - 1;
-    if (!result[month]) result[month] = [];
-    result[month].push(day);
+    const key = day.date.slice(0, 7);
+    if (!result[key]) result[key] = [];
+    result[key].push(day);
   }
   return result;
 }

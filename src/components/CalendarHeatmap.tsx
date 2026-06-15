@@ -8,20 +8,29 @@ import { MonthNavigator } from "./MonthNavigator";
 import { TierLegend } from "./TierLegend";
 import { DayModal } from "./DayModal";
 
-interface CalendarHeatmapProps {
-  days: DayPricing[];
+export interface WindowMonth {
   year: number;
+  month: number; // 0-11
 }
 
-export function CalendarHeatmap({ days, year }: CalendarHeatmapProps) {
+interface CalendarHeatmapProps {
+  days: DayPricing[];
+  months: WindowMonth[];
+}
+
+function monthKey(year: number, month: number): string {
+  return `${year}-${String(month + 1).padStart(2, "0")}`;
+}
+
+export function CalendarHeatmap({ days, months }: CalendarHeatmapProps) {
   const [selectedDay, setSelectedDay] = useState<DayPricing | null>(null);
-  const [activeMonth, setActiveMonth] = useState<number | null>(null);
-  const monthRefs = useRef<Record<number, HTMLDivElement | null>>({});
+  const [activeKey, setActiveKey] = useState<string | null>(null);
+  const monthRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const today = useMemo(() => new Date().toISOString().split("T")[0], []);
 
-  const handleMonthClick = useCallback((month: number) => {
-    setActiveMonth(month);
-    monthRefs.current[month]?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const handleMonthClick = useCallback((key: string) => {
+    setActiveKey(key);
+    monthRefs.current[key]?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
 
   const handleDayClick = useCallback((day: DayPricing) => {
@@ -40,24 +49,27 @@ export function CalendarHeatmap({ days, year }: CalendarHeatmapProps) {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <TierLegend />
-        <MonthNavigator activeMonth={activeMonth} onMonthClick={handleMonthClick} />
+        <MonthNavigator months={months} activeKey={activeKey} onMonthClick={handleMonthClick} />
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {Array.from({ length: 12 }).map((_, month) => (
-          <div
-            key={month}
-            ref={(el) => { monthRefs.current[month] = el; }}
-          >
-            <MonthGrid
-              month={month}
-              year={year}
-              days={byMonth[month] || []}
-              today={today}
-              onDayClick={handleDayClick}
-            />
-          </div>
-        ))}
+        {months.map(({ year, month }) => {
+          const key = monthKey(year, month);
+          return (
+            <div
+              key={key}
+              ref={(el) => { monthRefs.current[key] = el; }}
+            >
+              <MonthGrid
+                month={month}
+                year={year}
+                days={byMonth[key] || []}
+                today={today}
+                onDayClick={handleDayClick}
+              />
+            </div>
+          );
+        })}
       </div>
 
       {selectedDay && (

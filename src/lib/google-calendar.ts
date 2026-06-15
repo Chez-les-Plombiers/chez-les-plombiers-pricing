@@ -6,7 +6,7 @@ interface GCalEvent {
   end: { dateTime?: string; date?: string };
 }
 
-interface BookingSlot {
+export interface BookingSlot {
   isBooked: boolean;
   isBookedMorning: boolean;
   isBookedAfternoon: boolean;
