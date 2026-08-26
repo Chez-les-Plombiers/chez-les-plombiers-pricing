@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { addQuote, getAllQuotes } from "@/lib/kv";
 import { sendToPipedrive } from "@/lib/pipedrive";
 import { sendQuoteNotification } from "@/lib/email";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 import type { QuoteRequest } from "@/types";
 
 export async function GET(request: Request) {
@@ -19,6 +20,13 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    if (!(await rateLimit("quote", clientIp(request), 5))) {
+      return NextResponse.json(
+        { error: "Trop de demandes, réessayez dans une minute" },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
 
     // Validation

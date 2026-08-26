@@ -174,7 +174,13 @@ function FinancesContent({
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch(`/api/finances?year=${year}`);
+      const res = await fetch(`/api/finances?year=${year}`, {
+        headers: { Authorization: token },
+      });
+      if (res.status === 401) {
+        setToken(null);
+        return;
+      }
       if (!res.ok) throw new Error("fetch error");
       const json = await res.json();
       setData(json);
@@ -184,7 +190,7 @@ function FinancesContent({
       setLoading(false);
       setSyncing(false);
     }
-  }, [year]);
+  }, [year, token, setToken]);
 
   useEffect(() => {
     fetchData();
@@ -939,10 +945,12 @@ function ChargesFixesModal({
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/finances/charges-postes?year=${year}`)
+    fetch(`/api/finances/charges-postes?year=${year}`, {
+      headers: { Authorization: token },
+    })
       .then((r) => r.json())
       .then(setPostes);
-  }, [year]);
+  }, [year, token]);
 
   const handleSave = async () => {
     if (!postes) return;

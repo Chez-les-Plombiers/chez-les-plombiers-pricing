@@ -5,6 +5,11 @@ import { DEFAULT_CHARGES_POSTES } from "@/lib/finance-defaults";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
+  const token = request.headers.get("Authorization");
+  if (token !== process.env.ADMIN_PASSWORD) {
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const year = parseInt(searchParams.get("year") || "2026", 10);
 

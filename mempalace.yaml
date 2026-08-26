@@ -1,0 +1,12 @@
+wing: chez_les_plombiers_pricing
+rooms:
+- name: public
+  description: Files from public/
+- name: n8n_workflows
+  description: Files from n8n-workflows/
+- name: src
+  description: Files from src/
+- name: frontend
+  description: Files from components/
+- name: general
+  description: Files that don't fit other rooms

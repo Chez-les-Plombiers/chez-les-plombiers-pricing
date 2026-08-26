@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { trackView, getAnalytics } from "@/lib/kv";
+import { rateLimit, clientIp } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
   try {
+    if (!(await rateLimit("analytics", clientIp(request), 30))) {
+      return NextResponse.json({ error: "Trop de requêtes" }, { status: 429 });
+    }
     const { date } = await request.json();
-    if (!date) {
+    if (!date || typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return NextResponse.json({ error: "Date requise" }, { status: 400 });
     }
     await trackView(date);

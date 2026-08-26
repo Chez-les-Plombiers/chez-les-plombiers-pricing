@@ -57,22 +57,34 @@ export async function POST(request: Request) {
     const phone = extractPhone(payload.questions_and_answers || []);
     const eventUri = payload.event; // URI to fetch scheduled event details
 
-    // Fetch visit date/time from Calendly API
+    // Anti-forgerie : on ne crée un lead que si l'événement existe réellement
+    // dans notre compte Calendly (l'URI doit pointer vers l'API Calendly et
+    // être résolvable avec notre token). Sans ça, n'importe qui peut POSTer
+    // un faux payload et polluer Pipedrive.
+    if (!calendlyToken) {
+      console.error("[Calendly Webhook] CALENDLY_API_TOKEN not set — event ignored");
+      return NextResponse.json({ received: true, action: "ignored", error: "no_calendly_token" });
+    }
+    if (typeof eventUri !== "string" || !eventUri.startsWith("https://api.calendly.com/")) {
+      return NextResponse.json({ error: "Événement non vérifiable" }, { status: 401 });
+    }
+    const event = await fetchCalendlyEvent(eventUri, calendlyToken);
+    if (!event) {
+      return NextResponse.json({ error: "Événement introuvable" }, { status: 401 });
+    }
+
     let visitDate = "";
     let visitTime = "";
     let eventName = "Visite";
-    if (calendlyToken && eventUri) {
-      const event = await fetchCalendlyEvent(eventUri, calendlyToken);
-      if (event) {
-        const start = new Date(event.start_time);
-        visitDate = start.toISOString().split("T")[0]; // YYYY-MM-DD
-        visitTime = start.toLocaleTimeString("fr-FR", {
-          hour: "2-digit",
-          minute: "2-digit",
-          timeZone: "Europe/Paris",
-        });
-        eventName = event.name || "Visite";
-      }
+    {
+      const start = new Date(event.start_time);
+      visitDate = start.toISOString().split("T")[0]; // YYYY-MM-DD
+      visitTime = start.toLocaleTimeString("fr-FR", {
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "Europe/Paris",
+      });
+      eventName = event.name || "Visite";
     }
 
     const authParam = `api_token=${pipedriveToken}`;
