@@ -102,7 +102,7 @@ export default async function VenuePage({
             sont en plus insécables, pour ne jamais séparer « Appartement » de
             « Rose ».
           */}
-          <p className="text-pretty text-sm leading-relaxed text-muted">
+          <p className="hyphens-auto text-justify text-sm leading-relaxed text-muted">
             <span className="text-foreground">Chez les Plombiers</span>, ce sont
             trois lieux à la même adresse, au 39 rue des Bourdonnais, Paris
             1<sup>er</sup>, à deux pas du Pont Neuf :{" "}
@@ -113,11 +113,11 @@ export default async function VenuePage({
             </span>
             .
           </p>
-          <p className="text-sm leading-relaxed text-muted">
+          <p className="hyphens-auto text-justify text-sm leading-relaxed text-muted">
             Choisissez un lieu pour voir ses tarifs et ses disponibilités, puis
             cliquez sur une date pour obtenir le tarif exact et demander un devis.
           </p>
-          <p className="text-sm leading-relaxed text-muted">
+          <p className="hyphens-auto text-justify text-sm leading-relaxed text-muted">
             Si vous souhaitez réserver plusieurs espaces en même temps, ou sur une
             période plus longue, écrivez-nous directement sur WhatsApp au{" "}
             <a

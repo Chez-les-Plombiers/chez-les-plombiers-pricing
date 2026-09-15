@@ -18,10 +18,14 @@ export function VenueSelector({ current }: VenueSelectorProps) {
   return (
     <nav
       aria-label="Choix du lieu"
-      className="mb-6 flex flex-wrap gap-px border border-border bg-border"
+      className="mb-6 grid grid-cols-2 gap-px border border-border bg-border sm:grid-cols-3"
     >
-      {listVenues().map((venue) => {
+      {listVenues().map((venue, index) => {
         const active = venue.slug === current;
+        // Le premier lieu de l'ordre d'affichage est le vaisseau amiral :
+        // sur mobile il occupe toute la largeur, les deux autres se partagent
+        // la ligne du dessous. Sur écran large, les trois sont à égalité.
+        const flagship = index === 0;
         return (
           <Link
             key={venue.slug}
@@ -29,7 +33,8 @@ export function VenueSelector({ current }: VenueSelectorProps) {
             data-venue-tab={venue.slug}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex flex-1 basis-32 flex-col gap-0.5 px-4 py-3 transition-colors",
+              "flex flex-col gap-0.5 px-4 py-3 transition-colors",
+              flagship && "col-span-2 sm:col-span-1",
               active
                 ? "bg-card text-foreground"
                 : "bg-background text-muted hover:bg-card hover:text-foreground"

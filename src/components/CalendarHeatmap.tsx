@@ -1,11 +1,10 @@
 "use client";
 
-import { useRef, useCallback, useState, useMemo } from "react";
+import { useCallback, useState, useMemo } from "react";
 import type { DayPricing } from "@/types";
 import type { VenueConfig } from "@/lib/venues";
 import { groupByMonth } from "@/lib/pricing-engine";
 import { MonthGrid } from "./MonthGrid";
-import { MonthNavigator } from "./MonthNavigator";
 import { TierLegend } from "./TierLegend";
 import { DayModal } from "./DayModal";
 
@@ -26,14 +25,7 @@ function monthKey(year: number, month: number): string {
 
 export function CalendarHeatmap({ days, months, venue }: CalendarHeatmapProps) {
   const [selectedDay, setSelectedDay] = useState<DayPricing | null>(null);
-  const [activeKey, setActiveKey] = useState<string | null>(null);
-  const monthRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const today = useMemo(() => new Date().toISOString().split("T")[0], []);
-
-  const handleMonthClick = useCallback((key: string) => {
-    setActiveKey(key);
-    monthRefs.current[key]?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, []);
 
   const handleDayClick = useCallback((day: DayPricing) => {
     setSelectedDay(day);
@@ -49,19 +41,18 @@ export function CalendarHeatmap({ days, months, venue }: CalendarHeatmapProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <TierLegend venue={venue} />
-        <MonthNavigator months={months} activeKey={activeKey} onMonthClick={handleMonthClick} />
-      </div>
+      {/*
+        Les ancres de mois ont été retirées : sur mobile tout le monde fait
+        défiler, et douze pastilles de navigation repoussaient le calendrier
+        encore plus bas — exactement l'inverse de l'effet recherché.
+      */}
+      <TierLegend venue={venue} />
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {months.map(({ year, month }) => {
           const key = monthKey(year, month);
           return (
-            <div
-              key={key}
-              ref={(el) => { monthRefs.current[key] = el; }}
-            >
+            <div key={key}>
               <MonthGrid
                 month={month}
                 year={year}

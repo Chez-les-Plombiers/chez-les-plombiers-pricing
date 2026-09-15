@@ -81,10 +81,10 @@ export function BasePriceGrid({ venue }: BasePriceGridProps) {
       <dl className="mt-3 grid gap-x-6 gap-y-2 border-t border-border pt-3 text-xs text-muted sm:grid-cols-3">
         <div>
           <dt className="font-mono text-[10px] uppercase tracking-widest text-venue">
-            Compris
+            Inclus
           </dt>
           <dd className="mt-0.5">
-            Location seule, ménage de fin d&apos;événement inclus.
+            Location seule et ménage de fin d&apos;événement.
           </dd>
         </div>
         <div>

@@ -89,8 +89,16 @@ export function DayModal({ day, allDays, venue, onClose }: DayModalProps) {
                       style={{ backgroundColor: tier.color }}
                       aria-hidden
                     />
+                    {/*
+                      Le motif n'est affiché que s'il apprend quelque chose.
+                      Sur un jour ordinaire il vaut le nom du jour, mais une
+                      surcharge admin peut l'avoir fixé au libellé du palier —
+                      d'où le « Demande basse — Demande basse » observé.
+                    */}
                     <span className="text-sm text-muted">
-                      {tier.label} — {day.reason}
+                      {day.reason && day.reason !== tier.label
+                        ? `${tier.label} — ${day.reason}`
+                        : tier.label}
                     </span>
                   </div>
                 )
