@@ -94,20 +94,32 @@ export default async function VenuePage({
           tous. La dernière phrase absorbe aussi les demandes multi-lieux, qui
           se traitent de vive voix plutôt que dans l'outil.
         */}
-        <div className="mb-6 max-w-3xl">
+        <div className="mb-6 flex flex-col gap-3">
           <p className="text-sm leading-relaxed text-muted">
             <span className="text-foreground">Chez les Plombiers</span>, ce sont
-            trois lieux voisins au 39 rue des Bourdonnais, Paris 1
-            <sup>er</sup> : <span className="text-foreground">l&apos;Atelier</span>{" "}
-            (200 m²), <span className="text-foreground">la Boutique</span> (45 m²)
-            et <span className="text-foreground">l&apos;Appartement</span> (100 m²).
-            Choisissez un lieu pour voir ses tarifs et ses disponibilités sur les
-            douze prochains mois, puis cliquez sur une date pour obtenir le tarif
-            exact et demander un devis.
+            trois lieux à la même adresse, au 39 rue des Bourdonnais, dans le
+            1<sup>er</sup> arrondissement de Paris :{" "}
+            <span className="text-foreground">l&apos;Atelier</span> (200 m²),{" "}
+            <span className="text-foreground">la Boutique</span> (45 m²) et{" "}
+            <span className="text-foreground">l&apos;Appartement Rose</span>{" "}
+            (100 m²).
           </p>
-          <p className="mt-2 text-sm leading-relaxed text-muted">
-            Un projet sur plusieurs espaces, une période longue ou une demande
-            particulière ? Écrivez-nous : on s&apos;en occupe au cas par cas.
+          <p className="text-sm leading-relaxed text-muted">
+            Choisissez un lieu pour voir ses tarifs et ses disponibilités, puis
+            cliquez sur une date pour obtenir le tarif exact et demander un devis.
+          </p>
+          <p className="text-sm leading-relaxed text-muted">
+            Si vous souhaitez réserver plusieurs espaces en même temps, ou sur une
+            période plus longue, écrivez-nous directement sur WhatsApp au{" "}
+            <a
+              href="https://wa.me/33761471073"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-accent underline underline-offset-4 transition-colors hover:text-accent-hover"
+            >
+              +33 7 61 47 10 73
+            </a>
+            .
           </p>
         </div>
 

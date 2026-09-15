@@ -34,6 +34,13 @@
  * `:has()` sur `:root` permet à la page de teinter aussi le fond du body,
  * sans JavaScript et sans toucher au layout racine.
  */
+:root:has([data-venue="atelier"]) {
+  --background: #1C1A17;
+  --card: #262320;
+  --surface: #302C27;
+  --border: #3D3830;
+}
+
 :root:has([data-venue="boutique"]) {
   --background: #0F1720;
   --card: #16212C;

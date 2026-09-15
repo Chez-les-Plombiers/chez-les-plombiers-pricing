@@ -41,7 +41,7 @@ export function VenueSelector({ current }: VenueSelectorProps) {
                 active ? "text-venue" : "text-inherit"
               )}
             >
-              {venue.shortName}
+              {venue.name}
             </span>
             <span className="text-[10px] leading-tight text-muted">
               {venue.tagline}

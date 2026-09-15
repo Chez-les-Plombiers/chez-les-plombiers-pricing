@@ -23,7 +23,7 @@ export function Navbar() {
           </a>
         </div>
         <span className="font-mono text-xs uppercase tracking-wider text-muted">
-          Tarifs 2026
+          Calendrier tarifaire
         </span>
       </div>
     </nav>
