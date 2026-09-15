@@ -99,11 +99,10 @@ export default async function VenuePage({
           <p className="text-sm leading-relaxed text-muted">
             <span className="text-foreground">Chez les Plombiers</span>, ce sont
             trois lieux à la même adresse, au 39 rue des Bourdonnais, dans le
-            1<sup>er</sup> arrondissement de Paris :{" "}
-            <span className="text-foreground">l&apos;Atelier</span> (200 m²),{" "}
-            <span className="text-foreground">la Boutique</span> (45 m²) et{" "}
-            <span className="text-foreground">l&apos;Appartement Rose</span>{" "}
-            (100 m²).
+            1<sup>er</sup> arrondissement de Paris, à deux pas du Pont Neuf :{" "}
+            <span className="text-foreground">l&apos;Atelier</span>,{" "}
+            <span className="text-foreground">la Boutique</span> et{" "}
+            <span className="text-foreground">l&apos;Appartement Rose</span>.
           </p>
           <p className="text-sm leading-relaxed text-muted">
             Choisissez un lieu pour voir ses tarifs et ses disponibilités, puis

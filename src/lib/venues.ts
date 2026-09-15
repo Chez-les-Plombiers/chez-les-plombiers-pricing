@@ -92,11 +92,6 @@ export interface VenueConfig {
    * sans mettre le contrat à jour, sinon le site et le devis divergent.
    */
   deposit: number | null;
-  /**
-   * Seuils rendant obligatoire la présence d'agents SSIAP, propres au lieu
-   * (CGL Article 10). `null` si le lieu n'a pas encore de CGL.
-   */
-  securityRule: string | null;
 }
 
 export const VENUES: Record<VenueSlug, VenueConfig> = {
@@ -131,8 +126,6 @@ export const VENUES: Record<VenueSlug, VenueConfig> = {
     maxGuests: 200,
     capacityLabel: "200 m² — jusqu'à 200 personnes",
     deposit: 5000,
-    securityRule:
-      "au-delà de 30 personnes (1 agent), au-delà de 80 personnes (2 agents), en présence d'alcool, ou en cas d'accès libre au public",
   },
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -155,9 +148,6 @@ export const VENUES: Record<VenueSlug, VenueConfig> = {
     capacityLabel: "45 m² — journée entière",
     // Pas de caution sur LA BOUTIQUE (décision Étienne, 15/09/2026).
     deposit: null,
-    // LA BOUTIQUE n'a pas encore de CGL : on n'annonce donc aucun seuil
-    // chiffré, seulement le principe général.
-    securityRule: null,
   },
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -190,8 +180,6 @@ export const VENUES: Record<VenueSlug, VenueConfig> = {
     maxGuests: 50,
     capacityLabel: "100 m² — jusqu'à 50 personnes",
     deposit: 3000,
-    securityRule:
-      "au-delà de 30 personnes, en présence d'alcool, ou en cas d'accès libre au public",
   },
 };
 

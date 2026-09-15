@@ -10,12 +10,17 @@ const INFOS_URL = "https://chezlesplombiers.fr/infos";
 const WHATSAPP_URL = "https://wa.me/33761471073";
 
 /**
- * Conditions essentielles, affichées sous le calendrier.
+ * Conditions essentielles, sous le calendrier.
  *
- * Objectif : que personne ne puisse dire « je ne savais pas ». Tout ce qui
- * est annoncé ici doit exister dans les CGL signées — les montants de caution
- * et les seuils SSIAP viennent des articles 6 et 10, via la configuration du
- * lieu. Ne rien ajouter ici qui ne soit pas dans le contrat.
+ * Volontairement court : trois lignes, pas un contrat. L'objectif est qu'un
+ * prospect ne puisse pas dire « je ne savais pas » sur les deux points qui
+ * changent vraiment son budget — le périmètre du tarif et le dépôt de
+ * garantie. Le détail vit dans les CGL, qu'on envoie sur demande.
+ *
+ * ⚠️ NE PAS détailler ici les prestations de sécurité (nombre d'agents,
+ * seuils, tarifs, mention SSIAP). Les locaux n'ont pas de classification ERP
+ * définitive, et afficher publiquement ces règles attire l'attention sur un
+ * sujet qui se traite au devis et dans les CGL. Décision Étienne, 15/09/2026.
  */
 export function VenueTerms({ venue }: VenueTermsProps) {
   return (
@@ -34,10 +39,8 @@ export function VenueTerms({ venue }: VenueTermsProps) {
         <div>
           <dt className="text-foreground">Ce que le tarif comprend</dt>
           <dd className="mt-1">
-            Les tarifs affichés sont <strong className="font-normal text-foreground">hors taxes</strong>{" "}
-            et correspondent à la <strong className="font-normal text-foreground">location seule</strong>,
-            ménage de fin d&apos;événement compris. Les locaux doivent être
-            restitués débarrassés de vos déchets, matériel et décor.
+            Les tarifs affichés sont hors taxes et correspondent à la location
+            seule, ménage de fin d&apos;événement compris.
           </dd>
         </div>
 
@@ -45,20 +48,7 @@ export function VenueTerms({ venue }: VenueTermsProps) {
           <dt className="text-foreground">Prestations complémentaires</dt>
           <dd className="mt-1">
             Selon la nature de votre événement, des prestations peuvent
-            s&apos;ajouter au tarif de location.{" "}
-            {venue.securityRule ? (
-              <>
-                La présence d&apos;<strong className="font-normal text-foreground">agents de sécurité SSIAP</strong>{" "}
-                est notamment obligatoire {venue.securityRule}. Chaque agent est
-                facturé 250 € HT pour un forfait de 6 heures ; nous nous
-                chargeons de les fournir.
-              </>
-            ) : (
-              <>
-                C&apos;est notamment le cas de la sécurité, dont les modalités
-                dépendent du format retenu. Nous vous l&apos;indiquons au devis.
-              </>
-            )}
+            s&apos;ajouter au tarif de location.
           </dd>
         </div>
 
@@ -70,14 +60,12 @@ export function VenueTerms({ venue }: VenueTermsProps) {
             ) : (
               <>
                 Un dépôt de garantie de{" "}
-                <strong className="font-normal text-foreground">
+                <span className="text-foreground">
                   {formatPrice(venue.deposit)}
-                </strong>{" "}
-                est exigé pour toute réservation. Il se règle{" "}
-                <strong className="font-normal text-foreground">par virement bancaire</strong>{" "}
-                uniquement — ni chèque, ni empreinte bancaire. Il vous est
-                restitué sous 8 jours après l&apos;état des lieux de sortie,
-                déduction faite des sommes éventuellement dues.
+                </span>{" "}
+                est demandé pour toute réservation. Il se règle par virement
+                bancaire uniquement, et vous est restitué sous 8 jours après
+                l&apos;état des lieux de sortie.
               </>
             )}
           </dd>
@@ -101,7 +89,7 @@ export function VenueTerms({ venue }: VenueTermsProps) {
           className="inline-flex items-center gap-2 border border-border px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-muted transition-colors hover:border-accent hover:text-accent"
         >
           <FileText className="h-3 w-3" />
-          Demander les conditions générales de location
+          Demander les conditions générales
         </a>
       </div>
     </section>
