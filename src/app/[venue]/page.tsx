@@ -96,13 +96,23 @@ export default async function VenuePage({
           se traitent de vive voix plutôt que dans l'outil.
         */}
         <div className="mb-6 flex flex-col gap-3">
-          <p className="text-sm leading-relaxed text-muted">
+          {/*
+            `text-pretty` empêche le mot orphelin en fin de paragraphe : viser
+            « une seule ligne » ne tient qu'à une largeur d'écran donnée, alors
+            que le problème réel est la coupure disgracieuse. Les noms de lieux
+            sont en plus insécables, pour ne jamais séparer « Appartement » de
+            « Rose ».
+          */}
+          <p className="text-pretty text-sm leading-relaxed text-muted">
             <span className="text-foreground">Chez les Plombiers</span>, ce sont
-            trois lieux à la même adresse, au 39 rue des Bourdonnais, dans le
-            1<sup>er</sup> arrondissement de Paris, à deux pas du Pont Neuf :{" "}
-            <span className="text-foreground">l&apos;Atelier</span>,{" "}
-            <span className="text-foreground">la Boutique</span> et{" "}
-            <span className="text-foreground">l&apos;Appartement Rose</span>.
+            trois lieux à la même adresse, au 39 rue des Bourdonnais, Paris
+            1<sup>er</sup>, à deux pas du Pont Neuf :{" "}
+            <span className="whitespace-nowrap text-foreground">l&apos;Atelier</span>,{" "}
+            <span className="whitespace-nowrap text-foreground">la Boutique</span> et{" "}
+            <span className="whitespace-nowrap text-foreground">
+              l&apos;Appartement Rose
+            </span>
+            .
           </p>
           <p className="text-sm leading-relaxed text-muted">
             Choisissez un lieu pour voir ses tarifs et ses disponibilités, puis
