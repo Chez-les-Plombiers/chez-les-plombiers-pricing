@@ -68,8 +68,8 @@ export function getBookingWindow(eventDate: string, today: string): BookingWindo
   const diffMs = event.getTime() - now.getTime();
   const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
-  // ~180 days = 6 months
-  if (diffDays >= 180) return "early-bird";
+  // Plus de fenêtre « early-bird » : au-delà de 2 mois, c'est le tarif standard.
+  // Aucune remise pour réservation anticipée (décision Étienne, 15/09/2026).
   // ~60 days = 2 months
   if (diffDays >= 60) return "standard";
   // 14 days = 2 weeks

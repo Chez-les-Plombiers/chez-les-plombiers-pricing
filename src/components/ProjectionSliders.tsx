@@ -17,7 +17,7 @@ const DOW_LABELS: Record<number, string> = {
 };
 
 const BW_LABELS: Record<BookingWindow, string> = {
-  "early-bird": "Early Bird",
+  "early-bird": "6 mois et +",
   standard: "Standard",
   confirmed: "Confirmé",
   "last-minute": "Last Minute",

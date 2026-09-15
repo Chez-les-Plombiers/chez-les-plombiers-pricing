@@ -122,9 +122,9 @@ PENNYLANE_API_KEY=xxx        # Bearer token Pennylane (facturation / CA)
 ### Fenêtres de réservation (coefficients)
 | Fenêtre | Délai | Coefficient |
 |---------|-------|-------------|
-| Early Bird | 6+ mois | -15% (×0.85) |
+| 6 mois et + | 6+ mois | aucune remise (×1.0) |
 | Standard | 2-5 mois | ×1.0 |
-| Confirmé | 2 sem – 2 mois | +10% (×1.1) |
+| Confirmé | 2 sem – 2 mois | ×1.0 |
 | Last Minute | < 14 jours | -25% (×0.75) |
 
 ### Fashion Week

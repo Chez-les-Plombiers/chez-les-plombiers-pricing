@@ -52,7 +52,11 @@ export const HALF_DAY_RATIO = 0.6;
 
 // --- Booking window coefficients ---
 export const BOOKING_WINDOWS: Record<BookingWindow, { label: string; coeff: number }> = {
-  "early-bird": { label: "Early Bird (-15%)", coeff: 0.85 },
+  // Remise « Early Bird » SUPPRIMÉE (décision Étienne, 15/09/2026) : les dates
+  // lointaines se louent au prix fort, aucune raison de les brader. La clé
+  // subsiste uniquement pour le simulateur de projections — `getBookingWindow`
+  // ne la renvoie plus jamais. Ne pas la réintroduire.
+  "early-bird": { label: "Tarif standard", coeff: 1.0 },
   standard: { label: "Tarif standard", coeff: 1.0 },
   confirmed: { label: "Tarif confirmé", coeff: 1.0 },
   "last-minute": { label: "Last Minute (-25%)", coeff: 0.75 },

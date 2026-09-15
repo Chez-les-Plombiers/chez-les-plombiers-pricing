@@ -24,9 +24,9 @@
 
 | Fenêtre      | Délai       | Coeff | Label         |
 |--------------|-------------|-------|---------------|
-| Early Bird   | 6+ mois     | 0.85  | -15%          |
+| 6 mois et +  | 6+ mois     | 1.00  | Tarif standard|
 | Standard     | 2-5 mois    | 1.00  | Tarif standard|
-| Confirmé     | 2 sem–2 mois| 1.10  | +10%          |
+| Confirmé     | 2 sem–2 mois| 1.00  | Tarif confirmé|
 | Last Minute  | < 14 jours  | 0.75  | -25%          |
 
 ## Tiers visuels
