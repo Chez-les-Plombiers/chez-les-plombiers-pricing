@@ -87,14 +87,24 @@ export default async function VenuePage({
   return (
     <div data-venue={venue.slug} className="flex min-h-screen flex-col">
       <Navbar />
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6">
+      {/*
+        Colonne flex : l'ordre d'affichage change selon la taille d'écran.
+        Sur mobile, l'encart des tarifs passe APRÈS le calendrier — un visiteur
+        sur téléphone veut d'abord voir les dates, et l'encart le repoussait
+        sous trois écrans de défilement. Sur tablette et ordinateur il reprend
+        sa place au-dessus, où il ne gêne personne.
+        `order` ne déplace que le rendu : le contenu reste lu dans l'ordre du
+        document par les lecteurs d'écran, ce qui convient pour un encart
+        d'information.
+      */}
+      <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-8 sm:px-6">
         {/*
           Texte d'accueil : un visiteur qui arrive ici ne sait pas forcément
           que la marque compte trois lieux, ni que ce calendrier les couvre
           tous. La dernière phrase absorbe aussi les demandes multi-lieux, qui
           se traitent de vive voix plutôt que dans l'outil.
         */}
-        <div className="mb-6 flex flex-col gap-3">
+        <div className="order-1 mb-6 flex flex-col gap-3">
           {/*
             `text-pretty` empêche le mot orphelin en fin de paragraphe : viser
             « une seule ligne » ne tient qu'à une largeur d'écran donnée, alors
@@ -132,17 +142,19 @@ export default async function VenuePage({
           </p>
         </div>
 
-        <VenueSelector current={venue.slug} />
+        <div className="order-2">
+          <VenueSelector current={venue.slug} />
+        </div>
 
         {!availability.ok && (
-          <div className="mb-4 border border-tier-premium bg-surface px-4 py-3 text-xs font-medium text-tier-premium">
+          <div className="order-3 mb-4 border border-tier-premium bg-surface px-4 py-3 text-xs font-medium text-tier-premium">
             Les disponibilités ne sont temporairement pas consultables. Les dates
             affichées ci-dessous peuvent déjà être réservées : merci de nous
             contacter pour confirmation.
           </div>
         )}
 
-        <div className="mb-4">
+        <div className="order-4 mb-4">
           <h1 className="font-mono text-xl font-bold uppercase tracking-widest text-foreground sm:text-2xl">
             {venue.name}
           </h1>
@@ -152,9 +164,13 @@ export default async function VenuePage({
           </p>
         </div>
 
-        <BasePriceGrid venue={venue} />
+        <div className="order-6 mt-8 sm:order-5 sm:mt-0">
+          <BasePriceGrid venue={venue} />
+        </div>
 
-        <CalendarHeatmap days={days} months={months} venue={venue} />
+        <div className="order-5 sm:order-6">
+          <CalendarHeatmap days={days} months={months} venue={venue} />
+        </div>
       </main>
       <Footer />
     </div>
