@@ -16,12 +16,16 @@ interface DayCellProps {
 }
 
 /**
- * Hachures orange signalant une option posée.
- * Un aplat plein serait confondu avec une réservation ferme ; les rayures
- * disent « en cours », ce qui est exactement le message voulu.
+ * Rayures diagonales signalant une option posée.
+ *
+ * Une bande laisse voir la couleur normale du jour, la suivante est sombre
+ * comme une réservation : la case se lit « à moitié bloquée ». C'est le bon
+ * niveau d'attention — une première version cerclée d'orange attirait l'œil
+ * sur des jours qui ne le méritent pas, une option n'est pas un événement
+ * important, juste une date en cours de négociation.
  */
 const OPTION_STRIPES =
-  "repeating-linear-gradient(45deg, var(--option) 0 2px, transparent 2px 6px)";
+  "repeating-linear-gradient(45deg, transparent 0 3px, rgba(0,0,0,0.55) 3px 6px)";
 
 export function DayCell({ day, today, venue, onClick }: DayCellProps) {
   const dayNum = getDayOfMonth(day.date);
@@ -68,9 +72,7 @@ export function DayCell({ day, today, venue, onClick }: DayCellProps) {
         "group relative flex h-9 w-full items-center justify-center overflow-hidden border text-xs transition-all sm:h-10",
         isDisabled
           ? "cursor-not-allowed border-transparent bg-tier-booked/40 text-muted"
-          : hasOption
-            ? "cursor-pointer border-option/70 hover:border-option"
-            : "cursor-pointer border-transparent hover:border-accent"
+          : "cursor-pointer border-transparent hover:border-accent"
       )}
     >
       {/* Fond : paliers de demande (ATELIER) ou surface neutre (autres lieux) */}
@@ -127,7 +129,7 @@ export function DayCell({ day, today, venue, onClick }: DayCellProps) {
         <>
           {day.isOption || !multiSlot ? (
             <div
-              className="absolute inset-0 opacity-30"
+              className="absolute inset-0"
               style={{ backgroundImage: OPTION_STRIPES }}
               aria-hidden
             />
@@ -135,14 +137,14 @@ export function DayCell({ day, today, venue, onClick }: DayCellProps) {
             <>
               {day.isOptionMorning && (
                 <div
-                  className="absolute inset-y-0 left-0 w-1/2 opacity-30"
+                  className="absolute inset-y-0 left-0 w-1/2"
                   style={{ backgroundImage: OPTION_STRIPES }}
                   aria-hidden
                 />
               )}
               {day.isOptionAfternoon && (
                 <div
-                  className="absolute inset-y-0 right-0 w-1/2 opacity-30"
+                  className="absolute inset-y-0 right-0 w-1/2"
                   style={{ backgroundImage: OPTION_STRIPES }}
                   aria-hidden
                 />

@@ -26,10 +26,11 @@ export function TierLegend({ venue }: TierLegendProps) {
         label="Option posée"
         swatch={
           <span
-            className="h-2.5 w-2.5 border border-option"
+            className="h-2.5 w-2.5"
             style={{
+              backgroundColor: TIERS.low.color,
               backgroundImage:
-                "repeating-linear-gradient(45deg, var(--option) 0 2px, transparent 2px 6px)",
+                "repeating-linear-gradient(45deg, transparent 0 2px, rgba(0,0,0,0.65) 2px 4px)",
             }}
             aria-hidden
           />
