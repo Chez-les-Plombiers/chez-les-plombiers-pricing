@@ -4,15 +4,24 @@ import { getAllOverrides, setOverride } from "@/lib/kv";
 import { getCalendarBookings } from "@/lib/google-calendar";
 import type { PricingOverride } from "@/types";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const [overrides, gcalBookings] = await Promise.all([
+    // L'année n'est plus figée : au 01/01/2027 un `2026` en dur aurait renvoyé
+    // zéro réservation et affiché l'année entière comme disponible.
+    const { searchParams } = new URL(request.url);
+    const parsed = parseInt(searchParams.get("year") ?? "", 10);
+    const year =
+      Number.isInteger(parsed) && parsed >= 2024 && parsed <= 2100
+        ? parsed
+        : new Date().getUTCFullYear();
+
+    const [overrides, gcal] = await Promise.all([
       getAllOverrides(),
-      getCalendarBookings(2026),
+      getCalendarBookings(year),
     ]);
 
     // Merge Google Calendar bookings (source of truth for availability)
-    for (const [date, booking] of Object.entries(gcalBookings)) {
+    for (const [date, booking] of Object.entries(gcal.bookings)) {
       const existing = overrides[date] || { date };
       overrides[date] = {
         ...existing,
@@ -23,8 +32,10 @@ export async function GET() {
       };
     }
 
-    const days = computeYearPricing(2026, overrides);
-    return NextResponse.json({ year: 2026, days });
+    const days = computeYearPricing(year, overrides);
+    // `calendarUnavailable` : Google n'a pas répondu. Le client doit signaler
+    // l'incertitude plutôt que présenter les dates comme libres.
+    return NextResponse.json({ year, days, calendarUnavailable: !gcal.ok });
   } catch {
     return NextResponse.json(
       { error: "Erreur serveur" },

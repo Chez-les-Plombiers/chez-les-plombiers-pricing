@@ -113,7 +113,7 @@ PENNYLANE_API_KEY=xxx        # Bearer token Pennylane (facturation / CA)
 | Jeudi | 4 000 € |
 | Vendredi | 3 000 € |
 | Samedi | 2 000 € |
-| Dimanche | 1 000 € |
+| Dimanche | 2 000 € |
 | Fashion Week | 6 000 € |
 
 ### Demi-journée
@@ -143,7 +143,7 @@ PENNYLANE_API_KEY=xxx        # Bearer token Pennylane (facturation / CA)
 Fashion Week > Fériés/Ponts/Vacances > Jour de la semaine
 
 ## Google Calendar — Source of truth disponibilité
-- **Calendrier :** "PLOMBIERS / VALIDÉ" — `c_c1de52d8f5aa41e62bf0988bbb5112c46ee33d12449e22ad9d4d7099dc54a911@group.calendar.google.com`
+- **Calendrier :** "ATELIER / VALIDÉ" — `c_c1de52d8f5aa41e62bf0988bbb5112c46ee33d12449e22ad9d4d7099dc54a911@group.calendar.google.com`
 - **GCP :** projet `chez-les-plombiers-490515`, API key publique (calendrier public)
 - **Logique demi-journée :**
   - Event 7h–13h → matin réservé (`isBookedMorning`)
@@ -153,7 +153,7 @@ Fashion Week > Fériés/Ponts/Vacances > Jour de la semaine
   - Deux demi-journées séparées le même jour → journée complète
 - **Merge :** les bookings GCal sont mergés dans les overrides KV avant `computeYearPricing()`, dans `page.tsx` (SSR) et `GET /api/pricing` (admin/API)
 - **Cache :** `cache: "no-store"` — chaque requête page/API refetch le calendrier Google
-- **Important :** les events doivent être sur le calendrier "PLOMBIERS / VALIDÉ", pas sur un calendrier perso
+- **Important :** les events doivent être sur le calendrier "ATELIER / VALIDÉ", pas sur un calendrier perso
 
 ## Accès calendrier public
 - Protégé par code d'accès (page /gate, cookie `clp-access` 90j)
@@ -287,3 +287,13 @@ Mois | Statut (auto) | Charges | CA | CA Prévi. | Résultat | Cumul
 - noindex partout (robots.txt + metadata)
 - Page publique = `force-dynamic` (lit KV à chaque requête)
 - SaveBadge = vert emerald, basé sur coeff booking window (pas de comparaison cross-tier)
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

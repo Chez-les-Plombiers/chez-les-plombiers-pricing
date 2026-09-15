@@ -12,7 +12,7 @@
 | 4   | Jeudi     | 4 000€ |
 | 5   | Vendredi  | 3 000€ |
 | 6   | Samedi    | 2 000€ |
-| 7   | Dimanche  | 1 000€ |
+| 7   | Dimanche  | 2 000€ |
 
 **Fashion Week :** 6 000€ (journée complète uniquement, pas de demi-journée)
 
