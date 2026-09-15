@@ -11,7 +11,7 @@ export function Footer() {
               39 rue des Bourdonnais, 75001 Paris
             </div>
             <p className="text-xs text-muted">
-              200m² — Lieu événementiel d&apos;exception
+              L&apos;Atelier · La Boutique · L&apos;Appartement Rose
             </p>
           </div>
           <p className="text-xs text-muted">

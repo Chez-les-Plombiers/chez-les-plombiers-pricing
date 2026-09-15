@@ -9,6 +9,7 @@ import { Footer } from "@/components/Footer";
 import { VenueSelector } from "@/components/VenueSelector";
 import { CalendarHeatmap } from "@/components/CalendarHeatmap";
 import { BasePriceGrid } from "@/components/BasePriceGrid";
+import { VenueTerms } from "@/components/VenueTerms";
 
 export const dynamic = "force-dynamic";
 
@@ -146,6 +147,8 @@ export default async function VenuePage({
         <BasePriceGrid venue={venue} />
 
         <CalendarHeatmap days={days} months={months} venue={venue} />
+
+        <VenueTerms venue={venue} />
       </main>
       <Footer />
     </div>

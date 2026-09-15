@@ -49,7 +49,8 @@ export interface VenueConfig {
   calendarValideId: string;
   /**
    * Agenda des options. Depuis le 15/09/2026 les options sont AFFICHÉES au
-   * public (rayées, orange) pour créer un signal d'urgence.
+   * public, en rayures diagonales sombres, pour créer un signal d'urgence
+   * sans détourner l'œil : la date se lit « à moitié bloquée ».
    * ⚠️ Revirement assumé : jusqu'ici la règle était de ne pas les lire.
    * ⚠️ Cela ne change RIEN à Calendly : les options ne bloquent toujours pas
    *    les visites, et le garde-fou quotidien ne surveille que VALIDÉ.
@@ -83,6 +84,19 @@ export interface VenueConfig {
   maxGuests: number | null;
   /** Mention de capacité affichée dans l'encart tarifs. */
   capacityLabel: string;
+
+  // ── Conditions de location ─────────────────────────────────────────────
+  /**
+   * Dépôt de garantie exigé, en euros. `null` = aucune caution.
+   * Montants repris des CGL signées (Article 6) — ne pas les modifier ici
+   * sans mettre le contrat à jour, sinon le site et le devis divergent.
+   */
+  deposit: number | null;
+  /**
+   * Seuils rendant obligatoire la présence d'agents SSIAP, propres au lieu
+   * (CGL Article 10). `null` si le lieu n'a pas encore de CGL.
+   */
+  securityRule: string | null;
 }
 
 export const VENUES: Record<VenueSlug, VenueConfig> = {
@@ -116,6 +130,9 @@ export const VENUES: Record<VenueSlug, VenueConfig> = {
     useTiers: true,
     maxGuests: 200,
     capacityLabel: "200 m² — jusqu'à 200 personnes",
+    deposit: 5000,
+    securityRule:
+      "au-delà de 30 personnes (1 agent), au-delà de 80 personnes (2 agents), en présence d'alcool, ou en cas d'accès libre au public",
   },
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -136,6 +153,11 @@ export const VENUES: Record<VenueSlug, VenueConfig> = {
     useTiers: false,
     maxGuests: null, // champ libre : le lieu n'est pas fait pour recevoir
     capacityLabel: "45 m² — journée entière",
+    // Pas de caution sur LA BOUTIQUE (décision Étienne, 15/09/2026).
+    deposit: null,
+    // LA BOUTIQUE n'a pas encore de CGL : on n'annonce donc aucun seuil
+    // chiffré, seulement le principe général.
+    securityRule: null,
   },
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -167,6 +189,9 @@ export const VENUES: Record<VenueSlug, VenueConfig> = {
     useTiers: false,
     maxGuests: 50,
     capacityLabel: "100 m² — jusqu'à 50 personnes",
+    deposit: 3000,
+    securityRule:
+      "au-delà de 30 personnes, en présence d'alcool, ou en cas d'accès libre au public",
   },
 };
 
