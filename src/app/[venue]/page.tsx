@@ -88,6 +88,29 @@ export default async function VenuePage({
     <div data-venue={venue.slug} className="flex min-h-screen flex-col">
       <Navbar />
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6">
+        {/*
+          Texte d'accueil : un visiteur qui arrive ici ne sait pas forcément
+          que la marque compte trois lieux, ni que ce calendrier les couvre
+          tous. La dernière phrase absorbe aussi les demandes multi-lieux, qui
+          se traitent de vive voix plutôt que dans l'outil.
+        */}
+        <div className="mb-6 max-w-3xl">
+          <p className="text-sm leading-relaxed text-muted">
+            <span className="text-foreground">Chez les Plombiers</span>, ce sont
+            trois lieux voisins au 39 rue des Bourdonnais, Paris 1
+            <sup>er</sup> : <span className="text-foreground">l&apos;Atelier</span>{" "}
+            (200 m²), <span className="text-foreground">la Boutique</span> (45 m²)
+            et <span className="text-foreground">l&apos;Appartement</span> (100 m²).
+            Choisissez un lieu pour voir ses tarifs et ses disponibilités sur les
+            douze prochains mois, puis cliquez sur une date pour obtenir le tarif
+            exact et demander un devis.
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-muted">
+            Un projet sur plusieurs espaces, une période longue ou une demande
+            particulière ? Écrivez-nous : on s&apos;en occupe au cas par cas.
+          </p>
+        </div>
+
         <VenueSelector current={venue.slug} />
 
         {!availability.ok && (

@@ -5,7 +5,6 @@ import { TIME_SLOT_LABELS } from "@/types";
 const NOTIFICATION_RECIPIENTS = [
   "etienne@chezlesplombiers.fr",
   "celine@chezlesplombiers.fr",
-  "frederic@chezlesplombiers.fr",
 ];
 
 function getResend(): Resend | null {

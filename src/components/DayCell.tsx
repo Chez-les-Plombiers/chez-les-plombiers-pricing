@@ -65,7 +65,7 @@ export function DayCell({ day, today, venue, onClick }: DayCellProps) {
       disabled={isDisabled}
       aria-label={label}
       className={cn(
-        "group relative flex h-12 w-full flex-col items-center justify-center overflow-hidden border text-xs transition-all sm:h-14",
+        "group relative flex h-9 w-full items-center justify-center overflow-hidden border text-xs transition-all sm:h-10",
         isDisabled
           ? "cursor-not-allowed border-transparent bg-tier-booked/40 text-muted"
           : hasOption
@@ -152,6 +152,12 @@ export function DayCell({ day, today, venue, onClick }: DayCellProps) {
         </>
       )}
 
+      {/*
+        Le numéro seul. Les prix ne sont PAS répétés dans les cellules : ils
+        sont déjà dans l'encart au-dessus, et les répéter 365 fois sature la
+        lecture — surtout sur un lieu à tarif unique, où la grille afficherait
+        « 1k€ » partout. Le tarif exact reste au clic, et dans l'aria-label.
+      */}
       <span
         className={cn(
           "relative z-10 font-medium",
@@ -160,23 +166,6 @@ export function DayCell({ day, today, venue, onClick }: DayCellProps) {
       >
         {dayNum}
       </span>
-
-      {isDisabled ? (
-        fullyBooked && (
-          <span className="relative z-10 max-w-full truncate font-mono text-[7px] uppercase leading-none tracking-tight text-muted">
-            Réservé
-          </span>
-        )
-      ) : (
-        <span
-          className={cn(
-            "relative z-10 max-w-full truncate font-mono text-[9px] leading-none sm:text-[10px]",
-            hasOption ? "text-option" : "text-accent"
-          )}
-        >
-          {formatPriceCompact(day.prices["journee-complete"])}
-        </span>
-      )}
     </button>
   );
 }
