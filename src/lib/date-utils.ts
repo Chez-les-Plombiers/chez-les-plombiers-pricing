@@ -87,3 +87,12 @@ export function toDateStr(year: number, month: number, day: number): string {
 export function isInRange(dateStr: string, startStr: string, endStr: string): boolean {
   return dateStr >= startStr && dateStr <= endStr;
 }
+
+/** Formate un prix de façon compacte pour les cellules du calendrier ("1,5k€", "3k€"). */
+export function formatPriceCompact(price: number): string {
+  if (price >= 1000) {
+    const k = price / 1000;
+    return `${k.toLocaleString("fr-FR", { maximumFractionDigits: 1 })}k€`;
+  }
+  return `${price}€`;
+}

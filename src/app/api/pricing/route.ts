@@ -1,46 +1,67 @@
 import { NextResponse } from "next/server";
-import { computeYearPricing } from "@/lib/pricing-engine";
+import { computeWindowPricing } from "@/lib/pricing-engine";
 import { getAllOverrides, setOverride } from "@/lib/kv";
-import { getCalendarBookings } from "@/lib/google-calendar";
+import { getVenueAvailability } from "@/lib/google-calendar";
+import { getVenue, isVenueSlug, DEFAULT_VENUE, type VenueSlug } from "@/lib/venues";
 import type { PricingOverride } from "@/types";
 
+/** Lieu demandé via `?venue=`, L'ATELIER par défaut (compatibilité historique). */
+function venueFromRequest(request: Request): VenueSlug | null {
+  const raw = new URL(request.url).searchParams.get("venue");
+  if (!raw) return DEFAULT_VENUE;
+  return isVenueSlug(raw) ? raw : null;
+}
+
+/**
+ * Tarification d'un lieu sur la fenêtre glissante de 12 mois.
+ *
+ * L'année n'est plus figée : un `2026` en dur aurait cessé de remonter la
+ * moindre réservation au 01/01/2027, et empêchait déjà l'admin d'éditer les
+ * dates que le public voyait.
+ */
 export async function GET(request: Request) {
   try {
-    // L'année n'est plus figée : au 01/01/2027 un `2026` en dur aurait renvoyé
-    // zéro réservation et affiché l'année entière comme disponible.
-    const { searchParams } = new URL(request.url);
-    const parsed = parseInt(searchParams.get("year") ?? "", 10);
-    const year =
-      Number.isInteger(parsed) && parsed >= 2024 && parsed <= 2100
-        ? parsed
-        : new Date().getUTCFullYear();
+    const slug = venueFromRequest(request);
+    if (!slug) return NextResponse.json({ error: "Lieu inconnu" }, { status: 400 });
+    const venue = getVenue(slug);
 
-    const [overrides, gcal] = await Promise.all([
-      getAllOverrides(),
-      getCalendarBookings(year),
+    const now = new Date();
+    const startYear = now.getUTCFullYear();
+    const startMonth = now.getUTCMonth();
+    const coveredYears = [
+      ...new Set(
+        Array.from({ length: 12 }, (_, i) =>
+          startYear + Math.floor((startMonth + i) / 12)
+        )
+      ),
+    ];
+
+    const [overrides, availability] = await Promise.all([
+      getAllOverrides(slug),
+      getVenueAvailability(venue, coveredYears),
     ]);
 
-    // Merge Google Calendar bookings (source of truth for availability)
-    for (const [date, booking] of Object.entries(gcal.bookings)) {
-      const existing = overrides[date] || { date };
-      overrides[date] = {
-        ...existing,
-        date,
-        isBooked: booking.isBooked || false,
-        isBookedMorning: booking.isBookedMorning || false,
-        isBookedAfternoon: booking.isBookedAfternoon || false,
-      };
+    for (const [date, booking] of Object.entries(availability.bookings)) {
+      overrides[date] = { ...(overrides[date] || { date }), date, ...booking };
     }
 
-    const days = computeYearPricing(year, overrides);
-    // `calendarUnavailable` : Google n'a pas répondu. Le client doit signaler
-    // l'incertitude plutôt que présenter les dates comme libres.
-    return NextResponse.json({ year, days, calendarUnavailable: !gcal.ok });
+    const days = computeWindowPricing({
+      venue,
+      startYear,
+      startMonth,
+      overrides,
+      options: availability.options,
+    });
+
+    return NextResponse.json({
+      venue: slug,
+      startYear,
+      startMonth,
+      calendarOk: availability.ok,
+      days,
+    });
   } catch {
-    return NextResponse.json(
-      { error: "Erreur serveur" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
 }
 
@@ -51,8 +72,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
     }
 
-    const body: PricingOverride = await request.json();
+    const slug = venueFromRequest(request);
+    if (!slug) return NextResponse.json({ error: "Lieu inconnu" }, { status: 400 });
 
+    const body: PricingOverride = await request.json();
     if (!body.date || !/^\d{4}-\d{2}-\d{2}$/.test(body.date)) {
       return NextResponse.json(
         { error: "Date invalide (format: YYYY-MM-DD)" },
@@ -60,12 +83,9 @@ export async function POST(request: Request) {
       );
     }
 
-    await setOverride(body);
-    return NextResponse.json({ success: true, override: body });
+    await setOverride(slug, body);
+    return NextResponse.json({ success: true, venue: slug, override: body });
   } catch {
-    return NextResponse.json(
-      { error: "Requête invalide" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Requête invalide" }, { status: 400 });
   }
 }

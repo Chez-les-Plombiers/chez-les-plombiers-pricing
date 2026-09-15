@@ -1,4 +1,6 @@
-const CALENDAR_ID = process.env.GOOGLE_CALENDAR_ID?.trim();
+import type { VenueConfig } from "./venues";
+import { hasSlots } from "./venues";
+
 const API_KEY = process.env.GOOGLE_CALENDAR_API_KEY?.trim();
 
 interface GCalEvent {
@@ -122,10 +124,11 @@ function markHours(
  * booking slots per date (morning/afternoon/full day).
  */
 export async function getCalendarBookings(
+  calendarId: string,
   year: number
 ): Promise<CalendarBookings> {
-  if (!CALENDAR_ID || !API_KEY) {
-    console.warn("[Google Calendar] Missing GOOGLE_CALENDAR_ID or GOOGLE_CALENDAR_API_KEY");
+  if (!calendarId || !API_KEY) {
+    console.warn("[Google Calendar] Missing calendarId or GOOGLE_CALENDAR_API_KEY");
     return { bookings: {}, ok: false };
   }
 
@@ -142,7 +145,7 @@ export async function getCalendarBookings(
     fields: "items(start,end)",
   });
 
-  const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?${params}`;
+  const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params}`;
 
   try {
     const res = await fetch(url, { cache: "no-store" });
@@ -158,6 +161,99 @@ export async function getCalendarBookings(
     console.error("[Google Calendar] Fetch error:", err);
     return { bookings: {}, ok: false };
   }
+}
+
+/**
+ * Un lieu qui ne vend que la journée entière n'a pas de demi-journée : toute
+ * occupation partielle bloque la journée. Appliquer ce repli ici permet à
+ * L'APPARTEMENT et LA BOUTIQUE d'hériter gratuitement des règles fines de
+ * L'ATELIER (franchissement de minuit, débarrassage offert jusqu'à 10h,
+ * soirée au-delà de 19h) tout en restant à la granularité du jour.
+ */
+function collapseToFullDay(
+  slots: Record<string, BookingSlot>
+): Record<string, BookingSlot> {
+  const result: Record<string, BookingSlot> = {};
+  for (const [date, slot] of Object.entries(slots)) {
+    result[date] = {
+      isBooked: slot.isBooked || slot.isBookedMorning || slot.isBookedAfternoon,
+      isBookedMorning: false,
+      isBookedAfternoon: false,
+    };
+  }
+  return result;
+}
+
+/**
+ * Retire des options tout ce qui est déjà réservé : une date à la fois en
+ * option et validée est simplement réservée. La réservation prime toujours.
+ */
+function stripBookedFromOptions(
+  options: Record<string, BookingSlot>,
+  bookings: Record<string, BookingSlot>
+): Record<string, BookingSlot> {
+  const result: Record<string, BookingSlot> = {};
+  for (const [date, option] of Object.entries(options)) {
+    const booked = bookings[date];
+    if (booked?.isBooked) continue; // journée entière réservée → rien à signaler
+
+    const slot: BookingSlot = {
+      isBooked: option.isBooked && !booked?.isBooked,
+      isBookedMorning: option.isBookedMorning && !booked?.isBookedMorning,
+      isBookedAfternoon: option.isBookedAfternoon && !booked?.isBookedAfternoon,
+    };
+    if (slot.isBooked || slot.isBookedMorning || slot.isBookedAfternoon) {
+      result[date] = slot;
+    }
+  }
+  return result;
+}
+
+export interface VenueAvailability {
+  /** Dates réservées (agenda VALIDÉ du lieu). */
+  bookings: Record<string, BookingSlot>;
+  /** Dates sous option (agenda OPTION du lieu) — affichées, mais réservables. */
+  options: Record<string, BookingSlot>;
+  /**
+   * `false` si l'agenda VALIDÉ n'a pas pu être lu : on ne peut alors pas
+   * affirmer qu'une date est libre. Un échec sur l'agenda OPTION n'affecte
+   * pas ce drapeau — ne pas afficher d'alerte pour une information d'appoint.
+   */
+  ok: boolean;
+}
+
+/**
+ * Disponibilité complète d'un lieu sur les années couvertes par la fenêtre
+ * affichée : réservations fermes et options, à la granularité du lieu.
+ */
+export async function getVenueAvailability(
+  venue: VenueConfig,
+  years: number[]
+): Promise<VenueAvailability> {
+  const [valideResults, optionResults] = await Promise.all([
+    Promise.all(years.map((year) => getCalendarBookings(venue.calendarValideId, year))),
+    Promise.all(years.map((year) => getCalendarBookings(venue.calendarOptionId, year))),
+  ]);
+
+  let bookings: Record<string, BookingSlot> = Object.assign(
+    {},
+    ...valideResults.map((r) => r.bookings)
+  );
+  let options: Record<string, BookingSlot> = Object.assign(
+    {},
+    ...optionResults.map((r) => r.bookings)
+  );
+
+  if (!hasSlots(venue)) {
+    bookings = collapseToFullDay(bookings);
+    options = collapseToFullDay(options);
+  }
+
+  return {
+    bookings,
+    options: stripBookedFromOptions(options, bookings),
+    ok: valideResults.every((r) => r.ok),
+  };
 }
 
 /**

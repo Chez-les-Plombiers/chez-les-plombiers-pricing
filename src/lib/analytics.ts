@@ -1,25 +1,5 @@
 /** GA4 event helper — safe no-op if gtag is not loaded */
 
-type GtagEvent = {
-  calendar_day_click: {
-    date: string;
-    tier: string;
-    price: number;
-    booking_window: string;
-  };
-  quote_form_open: {
-    date: string;
-    time_slot: string;
-    price: number;
-  };
-  quote_form_submit: {
-    date: string;
-    time_slot: string;
-    event_type: string;
-    price: number;
-    guest_count: number;
-  };
-};
 
 declare global {
   interface Window {
@@ -27,10 +7,14 @@ declare global {
   }
 }
 
-export function trackEvent<K extends keyof GtagEvent>(
-  eventName: K,
-  params: GtagEvent[K]
-) {
+type GtagParams = Record<string, string | number | boolean | undefined>;
+
+/**
+ * Évènement GA4, sans effet si gtag n'est pas chargé.
+ * Les paramètres sont libres : chaque évènement porte désormais le lieu
+ * (`venue`), indispensable pour comparer les trois calendriers.
+ */
+export function trackEvent(eventName: string, params?: GtagParams) {
   if (typeof window !== "undefined" && window.gtag) {
     window.gtag("event", eventName, params);
   }

@@ -1,5 +1,6 @@
 import { DAY_OF_WEEK_PRICES, FW_PRICE, BOOKING_WINDOWS } from "./tier-config";
 import { getDatesInMonth, getISODayOfWeek } from "./date-utils";
+import { getVenue } from "./venues";
 import { getTierForDate } from "./pricing-engine";
 import type { BookingWindow } from "@/types";
 
@@ -112,7 +113,7 @@ export function computeProjection(params: ScenarioParams, year: number = 2026): 
     let monthLow = 0;
 
     for (const dateStr of dates) {
-      const { tier } = getTierForDate(dateStr);
+      const { tier } = getTierForDate(dateStr, getVenue("atelier"));
       const tierKey = mapTierToKey(tier);
       const dow = getISODayOfWeek(dateStr);
 

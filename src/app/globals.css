@@ -14,6 +14,44 @@
   --tier-premium: #C8A96E;
   --tier-fashion-week: #DC2626;
   --tier-booked: #404040;
+
+  /* Couleur d'identité du lieu affiché. Vaut le laiton pour L'ATELIER. */
+  --venue: #C8A96E;
+
+  /* Dates sous option : orange, repris du code couleur Google Calendar. */
+  --option: #F09300;
+}
+
+/*
+ * Thème par lieu.
+ *
+ * Le fond change bien d'un lieu à l'autre, mais reste SOMBRE : un aplat clair
+ * (rose, bleu clair) casserait tout le système de couleurs, conçu pour un fond
+ * charbon, et entrerait en collision avec les paliers de demande du calendrier
+ * — notamment le bleu « demande basse ». On décline donc la couleur d'identité
+ * en une teinte du charbon, et on porte la vraie couleur sur l'accent.
+ *
+ * `:has()` sur `:root` permet à la page de teinter aussi le fond du body,
+ * sans JavaScript et sans toucher au layout racine.
+ */
+:root:has([data-venue="boutique"]) {
+  --background: #181B1E;
+  --card: #212529;
+  --surface: #2A3036;
+  --border: #37404A;
+  --venue: #7EC2E6;
+  --accent: #7EC2E6;
+  --accent-hover: #9BD2F0;
+}
+
+:root:has([data-venue="appartement"]) {
+  --background: #1E1A1C;
+  --card: #282326;
+  --surface: #332C30;
+  --border: #43393E;
+  --venue: #E4A2B5;
+  --accent: #E4A2B5;
+  --accent-hover: #F0B8C8;
 }
 
 @theme inline {
@@ -30,6 +68,8 @@
   --color-tier-premium: var(--tier-premium);
   --color-tier-fashion-week: var(--tier-fashion-week);
   --color-tier-booked: var(--tier-booked);
+  --color-venue: var(--venue);
+  --color-option: var(--option);
   --font-sans: var(--font-inter);
   --font-mono: var(--font-space-mono);
 }

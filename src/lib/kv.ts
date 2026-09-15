@@ -1,5 +1,6 @@
 import { Redis } from "@upstash/redis";
 import type { PricingOverride, QuoteRequest, AnalyticsEvent, FinanceMonth, ChargePoste } from "@/types";
+import type { VenueSlug } from "./venues";
 import { buildDefaultYear } from "./finance-defaults";
 
 function getRedis(): Redis | null {
@@ -9,7 +10,17 @@ function getRedis(): Redis | null {
   return new Redis({ url, token });
 }
 
-const OVERRIDES_KEY = "pricing:overrides";
+/**
+ * Clé des overrides d'un lieu.
+ *
+ * ⚠️ L'ATELIER conserve la clé historique `pricing:overrides` : elle contient
+ * plusieurs centaines de décisions tarifaires accumulées depuis 2026, qui sont
+ * un actif commercial. Ne jamais la renommer ni la migrer sans sauvegarde.
+ */
+function overridesKey(venue: VenueSlug): string {
+  return venue === "atelier" ? "pricing:overrides" : `pricing:overrides:${venue}`;
+}
+
 const QUOTES_KEY = "pricing:quotes";
 const ANALYTICS_KEY = "pricing:analytics";
 const BOOKED_KEY = "pricing:booked";
@@ -17,27 +28,32 @@ const CALENDAR_PASSWORD_KEY = "pricing:calendar-password";
 
 // --- Overrides ---
 
-export async function getAllOverrides(): Promise<Record<string, PricingOverride>> {
+export async function getAllOverrides(
+  venue: VenueSlug
+): Promise<Record<string, PricingOverride>> {
   const redis = getRedis();
   if (!redis) return {};
-  const data = await redis.get<Record<string, PricingOverride>>(OVERRIDES_KEY);
+  const data = await redis.get<Record<string, PricingOverride>>(overridesKey(venue));
   return data || {};
 }
 
-export async function setOverride(override: PricingOverride): Promise<void> {
+export async function setOverride(
+  venue: VenueSlug,
+  override: PricingOverride
+): Promise<void> {
   const redis = getRedis();
   if (!redis) return;
-  const overrides = await getAllOverrides();
+  const overrides = await getAllOverrides(venue);
   overrides[override.date] = override;
-  await redis.set(OVERRIDES_KEY, overrides);
+  await redis.set(overridesKey(venue), overrides);
 }
 
-export async function deleteOverride(date: string): Promise<void> {
+export async function deleteOverride(venue: VenueSlug, date: string): Promise<void> {
   const redis = getRedis();
   if (!redis) return;
-  const overrides = await getAllOverrides();
+  const overrides = await getAllOverrides(venue);
   delete overrides[date];
-  await redis.set(OVERRIDES_KEY, overrides);
+  await redis.set(overridesKey(venue), overrides);
 }
 
 // --- Booked dates ---

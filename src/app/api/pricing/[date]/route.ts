@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
 import { setOverride, deleteOverride } from "@/lib/kv";
 import type { PricingOverride } from "@/types";
+import { isVenueSlug, DEFAULT_VENUE, type VenueSlug } from "@/lib/venues";
+
+/** Lieu ciblé via `?venue=`, L'ATELIER par défaut. */
+function venueFromRequest(request: Request): VenueSlug | null {
+  const raw = new URL(request.url).searchParams.get("venue");
+  if (!raw) return DEFAULT_VENUE;
+  return isVenueSlug(raw) ? raw : null;
+}
 
 export async function PUT(
   request: Request,
@@ -21,8 +29,13 @@ export async function PUT(
       );
     }
 
+    const venue = venueFromRequest(request);
+    if (!venue) {
+      return NextResponse.json({ error: "Lieu inconnu" }, { status: 400 });
+    }
+
     const body: Partial<PricingOverride> = await request.json();
-    await setOverride({ ...body, date });
+    await setOverride(venue, { ...body, date });
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json(
@@ -42,8 +55,13 @@ export async function DELETE(
       return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
     }
 
+    const venue = venueFromRequest(request);
+    if (!venue) {
+      return NextResponse.json({ error: "Lieu inconnu" }, { status: 400 });
+    }
+
     const { date } = await params;
-    await deleteOverride(date);
+    await deleteOverride(venue, date);
     return NextResponse.json({ success: true });
   } catch {
     return NextResponse.json(
