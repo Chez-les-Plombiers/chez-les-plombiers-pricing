@@ -59,5 +59,9 @@ export const BOOKING_WINDOWS: Record<BookingWindow, { label: string; coeff: numb
   "early-bird": { label: "Tarif standard", coeff: 1.0 },
   standard: { label: "Tarif standard", coeff: 1.0 },
   confirmed: { label: "Tarif confirmé", coeff: 1.0 },
-  "last-minute": { label: "Last Minute (-25%)", coeff: 0.75 },
+  // Remise « Last Minute » SUPPRIMÉE (décision Étienne, 15/09/2026) : une
+  // demande à quelques jours est une position de force, pas une urgence à
+  // brader. Toute remise de dernière minute se décide au cas par cas, via un
+  // override de prix dans l'admin — jamais automatiquement sur le site.
+  "last-minute": { label: "Tarif standard", coeff: 1.0 },
 };

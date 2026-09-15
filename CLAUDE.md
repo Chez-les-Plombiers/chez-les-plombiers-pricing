@@ -12,7 +12,6 @@ Webapp calendrier affichant les prix de location par jour pour un lieu événeme
 - **Upstash Redis** pour overrides de prix, demandes de devis, analytics, données finances
 - **Google Calendar API** pour la disponibilité (source of truth)
 - **Pennylane API** (`app.pennylane.com/api/external/v2`) pour facturation / CA
-- **Pipedrive API** (`https://api.pipedrive.com/v1`) pour sync CRM
 - **Chart.js** + react-chartjs-2 pour graphiques finances
 - **Vercel** hosting, auto-deploy sur push main
 
@@ -125,7 +124,7 @@ PENNYLANE_API_KEY=xxx        # Bearer token Pennylane (facturation / CA)
 | 6 mois et + | 6+ mois | aucune remise (×1.0) |
 | Standard | 2-5 mois | ×1.0 |
 | Confirmé | 2 sem – 2 mois | ×1.0 |
-| Last Minute | < 14 jours | -25% (×0.75) |
+| Last Minute | < 14 jours | aucune remise (×1.0) |
 
 ### Fashion Week
 - Journée complète uniquement (pas de demi-journée)

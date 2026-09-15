@@ -27,7 +27,7 @@
 | 6 mois et +  | 6+ mois     | 1.00  | Tarif standard|
 | Standard     | 2-5 mois    | 1.00  | Tarif standard|
 | Confirmé     | 2 sem–2 mois| 1.00  | Tarif confirmé|
-| Last Minute  | < 14 jours  | 0.75  | -25%          |
+| Last Minute  | < 14 jours  | 1.00  | Tarif standard|
 
 ## Tiers visuels
 
