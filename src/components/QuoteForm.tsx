@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { ArrowLeft, Send, Loader2 } from "lucide-react";
 import type { DayPricing, TimeSlot } from "@/types";
+import type { VenueConfig } from "@/lib/venues";
+import { hasSlots } from "@/lib/venues";
 import { TIME_SLOT_LABELS } from "@/types";
 import { formatDateFR, formatPrice } from "@/lib/date-utils";
 import { trackEvent } from "@/lib/analytics";
@@ -20,6 +22,7 @@ interface SireneResult {
 interface QuoteFormProps {
   day: DayPricing;
   allDays: DayPricing[];
+  venue: VenueConfig;
   timeSlot: TimeSlot;
   onBack: () => void;
   onSuccess: () => void;
@@ -44,7 +47,9 @@ function addDays(dateStr: string, n: number): string {
   return new Date(Date.UTC(y, m - 1, d + n)).toISOString().split("T")[0];
 }
 
-export function QuoteForm({ day, allDays, timeSlot, onBack, onSuccess }: QuoteFormProps) {
+export function QuoteForm({ day, allDays, venue, timeSlot, onBack, onSuccess }: QuoteFormProps) {
+  const multiSlot = hasSlots(venue);
+  const slotLabel = multiSlot ? TIME_SLOT_LABELS[timeSlot] : "Journée entière";
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -66,16 +71,18 @@ export function QuoteForm({ day, allDays, timeSlot, onBack, onSuccess }: QuoteFo
       if (dp) {
         const slotBooked =
           dp.isBooked ||
-          (timeSlot === "matinee" && dp.isBookedMorning) ||
-          (timeSlot === "apres-midi" && dp.isBookedAfternoon) ||
-          (timeSlot === "journee-complete" && (dp.isBookedMorning || dp.isBookedAfternoon));
+          (multiSlot &&
+            ((timeSlot === "matinee" && dp.isBookedMorning) ||
+              (timeSlot === "apres-midi" && dp.isBookedAfternoon) ||
+              (timeSlot === "journee-complete" &&
+                (dp.isBookedMorning || dp.isBookedAfternoon))));
         days.push({ date, price: dp.prices[timeSlot], available: !slotBooked });
       } else {
         days.push({ date, price: 0, available: false });
       }
     }
     return days;
-  }, [day.date, numberOfDays, dayMap, timeSlot]);
+  }, [day.date, numberOfDays, dayMap, timeSlot, multiSlot]);
 
   const totalPrice = consecutiveDays.reduce((sum, d) => sum + d.price, 0);
   const hasUnavailable = consecutiveDays.some((d) => !d.available);
@@ -142,6 +149,7 @@ export function QuoteForm({ day, allDays, timeSlot, onBack, onSuccess }: QuoteFo
 
     const form = new FormData(e.currentTarget);
     const payload = {
+      venue: venue.slug,
       date: day.date,
       timeSlot,
       numberOfDays,
@@ -171,6 +179,7 @@ export function QuoteForm({ day, allDays, timeSlot, onBack, onSuccess }: QuoteFo
       }
 
       trackEvent("quote_form_submit", {
+        venue: venue.slug,
         date: day.date,
         time_slot: timeSlot,
         event_type: payload.eventType,
@@ -215,7 +224,7 @@ export function QuoteForm({ day, allDays, timeSlot, onBack, onSuccess }: QuoteFo
           <p className="text-xs text-muted">
             {formatDateFR(day.date)}
             {numberOfDays > 1 && ` → ${formatDateFR(addDays(day.date, numberOfDays - 1))}`}
-            {" "}— {TIME_SLOT_LABELS[timeSlot]}
+            {" "}— {slotLabel}
           </p>
           <select
             value={numberOfDays}
@@ -344,7 +353,7 @@ export function QuoteForm({ day, allDays, timeSlot, onBack, onSuccess }: QuoteFo
             name="guestCount"
             type="number"
             min="1"
-            max="200"
+            {...(venue.maxGuests ? { max: venue.maxGuests } : {})}
             required
             placeholder="Nb invités *"
             className="border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-muted focus:border-accent focus:outline-none"

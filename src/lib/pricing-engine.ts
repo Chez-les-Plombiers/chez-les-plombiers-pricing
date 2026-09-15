@@ -1,117 +1,147 @@
 import type { DayPricing, PricingOverride, TierSlug, BookingWindow, TimeSlot } from "@/types";
-import { DAY_OF_WEEK_PRICES, FW_PRICE, HALF_DAY_RATIO, BOOKING_WINDOWS } from "./tier-config";
+import type { BookingSlot } from "./google-calendar";
+import type { VenueConfig } from "./venues";
+import { hasSlots } from "./venues";
+import { BOOKING_WINDOWS } from "./tier-config";
 import { getISODayOfWeek, getDatesInMonth } from "./date-utils";
 import { isFashionWeek, isJourFerie, isPont, isVacances } from "./calendar-data";
 
+const DAY_NAMES: Record<number, string> = {
+  1: "Lundi",
+  2: "Mardi",
+  3: "Mercredi",
+  4: "Jeudi",
+  5: "Vendredi",
+  6: "Samedi",
+  7: "Dimanche",
+};
+
 /**
- * Determine the visual tier for a given date.
- * Fashion Week > Fériés/Ponts/Vacances > Day of week
+ * Palier visuel d'une date pour un lieu donné.
+ *
+ * Les paliers de demande (rouge / laiton / bleu) n'existent que sur les lieux
+ * dont la grille le justifie — voir `useTiers`. En revanche la Fashion Week
+ * est TOUJOURS signalée : c'est la seule période où le prix change vraiment,
+ * sur les trois lieux.
  */
-export function getTierForDate(dateStr: string): { tier: TierSlug; reason: string } {
+export function getTierForDate(
+  dateStr: string,
+  venue: VenueConfig
+): { tier: TierSlug; reason: string } {
   const fw = isFashionWeek(dateStr);
-  if (fw.match) {
-    return { tier: "fashion-week", reason: fw.label };
+  if (fw.match) return { tier: "fashion-week", reason: fw.label };
+
+  const dow = getISODayOfWeek(dateStr);
+
+  if (!venue.useTiers) {
+    return { tier: "low", reason: DAY_NAMES[dow] };
   }
 
   const ferie = isJourFerie(dateStr);
-  if (ferie.match) {
-    return { tier: "low", reason: ferie.label };
-  }
+  if (ferie.match) return { tier: "low", reason: ferie.label };
 
   const pont = isPont(dateStr);
-  if (pont.match) {
-    return { tier: "low", reason: pont.label };
-  }
+  if (pont.match) return { tier: "low", reason: pont.label };
 
   const vac = isVacances(dateStr);
-  if (vac.match) {
-    return { tier: "low", reason: vac.label };
-  }
+  if (vac.match) return { tier: "low", reason: vac.label };
 
-  const dow = getISODayOfWeek(dateStr);
-  const dayNames: Record<number, string> = {
-    1: "Lundi",
-    2: "Mardi",
-    3: "Mercredi",
-    4: "Jeudi",
-    5: "Vendredi",
-    6: "Samedi",
-    7: "Dimanche",
-  };
-
-  // Wed/Thu/Fri (3000-4000€) → premium (Demande soutenue / laiton)
-  if (dow >= 3 && dow <= 5) {
-    return { tier: "premium", reason: dayNames[dow] };
-  }
-
-  // Mon/Tue/Sat/Sun (1000-2000€) → low (Basse demande / bleu)
-  return { tier: "low", reason: dayNames[dow] };
+  // Mer/Jeu/Ven → demande soutenue (laiton). Le reste → demande basse (bleu).
+  if (dow >= 3 && dow <= 5) return { tier: "premium", reason: DAY_NAMES[dow] };
+  return { tier: "low", reason: DAY_NAMES[dow] };
 }
 
 /**
- * Get the base price for a date (journée complète, before booking window).
+ * Prix de base d'une date pour un lieu (journée complète, HT, avant override).
+ * Fashion Week prime toujours sur la grille courante.
  */
-export function getBasePrice(dateStr: string): number {
-  const fw = isFashionWeek(dateStr);
-  if (fw.match) return FW_PRICE;
-
-  const dow = getISODayOfWeek(dateStr);
-  return DAY_OF_WEEK_PRICES[dow] ?? 2000;
+export function getBasePrice(dateStr: string, venue: VenueConfig): number {
+  if (isFashionWeek(dateStr).match) return venue.fashionWeekPrice;
+  if (venue.pricing.kind === "flat") return venue.pricing.price;
+  return venue.pricing.prices[getISODayOfWeek(dateStr)];
 }
 
 /**
- * Determine the booking window based on how far the event date is from today.
+ * Fenêtre de réservation, d'après la distance à aujourd'hui.
+ *
+ * ⚠️ Les quatre coefficients valent 1,0 depuis le 15/09/2026 : les remises
+ * Early Bird et Last Minute ont été supprimées, toute remise se décide
+ * désormais à la main via un override. Ne JAMAIS réintroduire un coefficient
+ * inférieur à 1. La notion ne subsiste que pour le simulateur de projections.
  */
 export function getBookingWindow(eventDate: string, today: string): BookingWindow {
-  const event = new Date(eventDate + "T00:00:00");
-  const now = new Date(today + "T00:00:00");
-  const diffMs = event.getTime() - now.getTime();
-  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const event = new Date(eventDate + "T00:00:00Z");
+  const now = new Date(today + "T00:00:00Z");
+  const diffDays = Math.ceil((event.getTime() - now.getTime()) / 86_400_000);
 
-  // Plus de fenêtre « early-bird » : au-delà de 2 mois, c'est le tarif standard.
-  // Aucune remise pour réservation anticipée (décision Étienne, 15/09/2026).
-  // ~60 days = 2 months
+  if (diffDays >= 180) return "early-bird";
   if (diffDays >= 60) return "standard";
-  // 14 days = 2 weeks
   if (diffDays >= 14) return "confirmed";
   return "last-minute";
 }
 
-/**
- * Compute prices for the 3 time slots from a base price and booking window coefficient.
- */
-function computeSlotPrices(basePrice: number, coeff: number): Record<TimeSlot, number> {
-  const fullDay = Math.round(basePrice * coeff / 100) * 100; // round to nearest 100
-  const halfDay = Math.round(basePrice * HALF_DAY_RATIO * coeff / 100) * 100;
+/** Prix par créneau vendable du lieu. Un lieu mono-créneau n'a qu'une entrée. */
+function computeSlotPrices(
+  basePrice: number,
+  coeff: number,
+  venue: VenueConfig
+): Record<TimeSlot, number> {
+  const fullDay = Math.round((basePrice * coeff) / 100) * 100;
+  const ratio = venue.halfDayRatio ?? 1;
+  const halfDay = Math.round((basePrice * ratio * coeff) / 100) * 100;
+
   return {
-    matinee: halfDay,
-    "apres-midi": halfDay,
+    matinee: venue.slots.includes("matinee") ? halfDay : fullDay,
+    "apres-midi": venue.slots.includes("apres-midi") ? halfDay : fullDay,
     "journee-complete": fullDay,
   };
 }
 
-/**
- * Compute pricing for a single date, applying overrides and booking window.
- */
+export interface ComputeDayOptions {
+  override?: PricingOverride;
+  /** Option posée sur cette date (agenda OPTION du lieu). */
+  option?: BookingSlot;
+}
+
+/** Tarification complète d'une date pour un lieu. */
 export function computeDayPricing(
   dateStr: string,
   today: string,
-  override?: PricingOverride
+  venue: VenueConfig,
+  { override, option }: ComputeDayOptions = {}
 ): DayPricing {
-  const base = getTierForDate(dateStr);
+  const base = getTierForDate(dateStr, venue);
   const tier = override?.tier ?? base.tier;
   const reason = override?.reason ?? base.reason;
-  const basePrice = override?.basePrice ?? getBasePrice(dateStr);
+  const basePrice = override?.basePrice ?? getBasePrice(dateStr, venue);
 
   const bw = getBookingWindow(dateStr, today);
   const bwDef = BOOKING_WINDOWS[bw];
 
-  const defaultPrices = computeSlotPrices(basePrice, bwDef.coeff);
+  const defaultPrices = computeSlotPrices(basePrice, bwDef.coeff, venue);
   const prices: Record<TimeSlot, number> = {
     matinee: override?.prices?.matinee ?? defaultPrices.matinee,
     "apres-midi": override?.prices?.["apres-midi"] ?? defaultPrices["apres-midi"],
-    "journee-complete": override?.prices?.["journee-complete"] ?? defaultPrices["journee-complete"],
+    "journee-complete":
+      override?.prices?.["journee-complete"] ?? defaultPrices["journee-complete"],
   };
+
+  // Un lieu mono-créneau n'a ni matinée ni après-midi : toute occupation
+  // partielle vaut journée entière (le repli est déjà appliqué à la lecture
+  // du calendrier, on le redouble ici pour les overrides saisis à la main).
+  const multiSlot = hasSlots(venue);
+  const bookedMorning = multiSlot ? (override?.isBookedMorning ?? false) : false;
+  const bookedAfternoon = multiSlot ? (override?.isBookedAfternoon ?? false) : false;
+  const booked =
+    (override?.isBooked ?? false) ||
+    (!multiSlot &&
+      Boolean(override?.isBookedMorning || override?.isBookedAfternoon));
+
+  const optionMorning = multiSlot ? (option?.isBookedMorning ?? false) : false;
+  const optionAfternoon = multiSlot ? (option?.isBookedAfternoon ?? false) : false;
+  const optionFull =
+    (option?.isBooked ?? false) ||
+    (!multiSlot && Boolean(option?.isBookedMorning || option?.isBookedAfternoon));
 
   return {
     date: dateStr,
@@ -122,67 +152,84 @@ export function computeDayPricing(
     bookingWindow: bw,
     bookingWindowLabel: bwDef.label,
     bookingWindowCoeff: bwDef.coeff,
-    isBooked: override?.isBooked ?? false,
-    isBookedMorning: override?.isBookedMorning ?? false,
-    isBookedAfternoon: override?.isBookedAfternoon ?? false,
+    isBooked: booked,
+    isBookedMorning: bookedMorning,
+    isBookedAfternoon: bookedAfternoon,
     isOverride: !!override,
+    isOption: optionFull,
+    isOptionMorning: optionMorning,
+    isOptionAfternoon: optionAfternoon,
   };
 }
 
-/**
- * Compute pricing for all days in a year.
- */
-export function computeYearPricing(
-  year: number,
-  overrides: Record<string, PricingOverride> = {},
-  today?: string
-): DayPricing[] {
-  const todayStr = today ?? new Date().toISOString().split("T")[0];
-  const days: DayPricing[] = [];
-  for (let month = 0; month < 12; month++) {
-    const dates = getDatesInMonth(year, month);
-    for (const dateStr of dates) {
-      days.push(computeDayPricing(dateStr, todayStr, overrides[dateStr]));
-    }
-  }
-  return days;
+export interface WindowPricingParams {
+  venue: VenueConfig;
+  startYear: number;
+  startMonth: number; // 0-11
+  overrides?: Record<string, PricingOverride>;
+  options?: Record<string, BookingSlot>;
+  today?: string;
+  monthCount?: number;
 }
 
 /**
- * Compute pricing for a rolling window of months starting at (startYear, startMonth).
- * The window can span across a year boundary (e.g. juin 2026 → mai 2027).
+ * Tarification d'une fenêtre glissante de mois, éventuellement à cheval sur
+ * deux années (ex. septembre 2026 → août 2027).
  */
-export function computeWindowPricing(
-  startYear: number,
-  startMonth: number,
-  overrides: Record<string, PricingOverride> = {},
-  today?: string,
-  monthCount = 12
-): DayPricing[] {
+export function computeWindowPricing({
+  venue,
+  startYear,
+  startMonth,
+  overrides = {},
+  options = {},
+  today,
+  monthCount = 12,
+}: WindowPricingParams): DayPricing[] {
   const todayStr = today ?? new Date().toISOString().split("T")[0];
   const days: DayPricing[] = [];
+
   for (let i = 0; i < monthCount; i++) {
     const absoluteMonth = startMonth + i;
     const year = startYear + Math.floor(absoluteMonth / 12);
     const month = absoluteMonth % 12;
-    const dates = getDatesInMonth(year, month);
-    for (const dateStr of dates) {
-      days.push(computeDayPricing(dateStr, todayStr, overrides[dateStr]));
+    for (const dateStr of getDatesInMonth(year, month)) {
+      days.push(
+        computeDayPricing(dateStr, todayStr, venue, {
+          override: overrides[dateStr],
+          option: options[dateStr],
+        })
+      );
     }
   }
+
   return days;
 }
 
-/**
- * Group pricing data by month, keyed by "YYYY-MM" so a multi-year window
- * never collides (e.g. janvier 2026 vs janvier 2027).
- */
+/** Tarification d'une année civile complète (admin, export iCal). */
+export function computeYearPricing(
+  year: number,
+  venue: VenueConfig,
+  overrides: Record<string, PricingOverride> = {},
+  options: Record<string, BookingSlot> = {},
+  today?: string
+): DayPricing[] {
+  return computeWindowPricing({
+    venue,
+    startYear: year,
+    startMonth: 0,
+    overrides,
+    options,
+    today,
+    monthCount: 12,
+  });
+}
+
+/** Regroupe par mois, clé "YYYY-MM" pour ne jamais confondre deux années. */
 export function groupByMonth(days: DayPricing[]): Record<string, DayPricing[]> {
   const result: Record<string, DayPricing[]> = {};
   for (const day of days) {
     const key = day.date.slice(0, 7);
-    if (!result[key]) result[key] = [];
-    result[key].push(day);
+    (result[key] ??= []).push(day);
   }
   return result;
 }

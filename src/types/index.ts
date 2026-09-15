@@ -1,3 +1,5 @@
+import type { VenueSlug } from "@/lib/venues";
+
 export type TierSlug = "fashion-week" | "premium" | "medium" | "low";
 
 export type TimeSlot = "matinee" | "apres-midi" | "journee-complete";
@@ -25,6 +27,14 @@ export interface DayPricing {
   isBookedMorning: boolean;
   isBookedAfternoon: boolean;
   isOverride: boolean;
+  /**
+   * Options posées (agenda OPTION du lieu). Affichées en rayé orange depuis le
+   * 15/09/2026 pour signaler l'urgence — mais la date reste cliquable et
+   * devisable : une option peut se libérer, et masquer la demande la tuerait.
+   */
+  isOption: boolean;
+  isOptionMorning: boolean;
+  isOptionAfternoon: boolean;
 }
 
 export interface PricingOverride {
@@ -40,6 +50,12 @@ export interface PricingOverride {
 
 export interface QuoteRequest {
   id: string;
+  /**
+   * Lieu concerné. Posé dès l'origine sur chaque devis : sans lui, ventiler
+   * le CA par lieu dans le dashboard finances serait impossible à
+   * reconstituer après coup.
+   */
+  venue: VenueSlug;
   date: string; // YYYY-MM-DD
   timeSlot: TimeSlot;
   firstName: string;

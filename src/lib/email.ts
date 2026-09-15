@@ -5,7 +5,6 @@ import { TIME_SLOT_LABELS } from "@/types";
 const NOTIFICATION_RECIPIENTS = [
   "etienne@chezlesplombiers.fr",
   "celine@chezlesplombiers.fr",
-  "frederic@chezlesplombiers.fr",
 ];
 
 function getResend(): Resend | null {
@@ -41,7 +40,9 @@ function formatPrice(n: number): string {
   }).format(n);
 }
 
-export async function sendQuoteNotification(quote: QuoteRequest & { totalPrice?: number }): Promise<void> {
+export async function sendQuoteNotification(
+  quote: QuoteRequest & { totalPrice?: number; venueName?: string }
+): Promise<void> {
   const resend = getResend();
   if (!resend) {
     console.warn("[Email] RESEND_API_KEY not configured — skipping notification");
@@ -67,13 +68,14 @@ export async function sendQuoteNotification(quote: QuoteRequest & { totalPrice?:
   });
 
   const priceDisplay = quote.totalPrice ? ` — ${formatPrice(quote.totalPrice)} HT` : "";
-  const subject = `Nouvelle demande de devis — ${quote.firstName} ${quote.lastName}${quote.company ? ` (${quote.company})` : ""} — ${dateFr}${priceDisplay}`;
+  const venueTag = quote.venueName ? `[${quote.venueName}] ` : "";
+  const subject = `${venueTag}Nouvelle demande de devis — ${quote.firstName} ${quote.lastName}${quote.company ? ` (${quote.company})` : ""} — ${dateFr}${priceDisplay}`;
 
   const html = `
 <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; color: #1A1A1A;">
   <div style="background: #1A1A1A; padding: 20px 24px;">
     <h1 style="margin: 0; font-size: 18px; font-weight: 700; color: #C8A96E; font-family: 'Space Mono', monospace, sans-serif; letter-spacing: 2px; text-transform: uppercase;">
-      Nouvelle demande de devis
+      Nouvelle demande de devis${quote.venueName ? ` — ${quote.venueName}` : ""}
     </h1>
   </div>
 

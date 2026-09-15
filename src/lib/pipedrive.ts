@@ -1,6 +1,7 @@
 import type { QuoteRequest } from "@/types";
 import { TIME_SLOT_LABELS } from "@/types";
 import { computeDayPricing } from "./pricing-engine";
+import { getVenue } from "./venues";
 import { getAllOverrides } from "./kv";
 
 const API_BASE = "https://api.pipedrive.com/v1";
@@ -64,14 +65,17 @@ export async function sendToPipedrive(quote: QuoteRequest): Promise<void> {
 
   // 3. Compute price for all requested days
   const today = new Date().toISOString().split("T")[0];
-  const overrides = await getAllOverrides();
+  // Pipedrive est abandonné (décision Étienne, 15/09/2026) : ce chemin ne
+  // sert plus qu'aux webhooks legacy, qui ne concernent que L'ATELIER.
+  const venue = getVenue("atelier");
+  const overrides = await getAllOverrides("atelier");
   const numDays = quote.numberOfDays || 1;
   const dayPricings: { date: string; dateFr: string; price: number; windowLabel: string }[] = [];
   for (let i = 0; i < numDays; i++) {
     const [qy, qm, qd] = quote.date.split("-").map(Number);
     const dateStr = new Date(Date.UTC(qy, qm - 1, qd + i)).toISOString().split("T")[0];
     const ov = overrides[dateStr];
-    const dp = computeDayPricing(dateStr, today, ov ?? undefined);
+    const dp = computeDayPricing(dateStr, today, venue, { override: ov ?? undefined });
     const [y, m, dd] = dateStr.split("-");
     dayPricings.push({
       date: dateStr,

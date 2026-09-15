@@ -1,6 +1,7 @@
 "use client";
 
 import type { DayPricing } from "@/types";
+import type { VenueConfig } from "@/lib/venues";
 import { getMonthNameFR, getDayLetters, getISODayOfWeek } from "@/lib/date-utils";
 import { DayCell } from "./DayCell";
 
@@ -9,10 +10,11 @@ interface MonthGridProps {
   year: number;
   days: DayPricing[];
   today: string;
+  venue: VenueConfig;
   onDayClick: (day: DayPricing) => void;
 }
 
-export function MonthGrid({ month, year, days, today, onDayClick }: MonthGridProps) {
+export function MonthGrid({ month, year, days, today, venue, onDayClick }: MonthGridProps) {
   const dayLetters = getDayLetters();
   const firstDayISO = days.length > 0 ? getISODayOfWeek(days[0].date) : 1;
   const emptySlots = firstDayISO - 1;
@@ -35,7 +37,13 @@ export function MonthGrid({ month, year, days, today, onDayClick }: MonthGridPro
           <div key={`empty-${i}`} />
         ))}
         {days.map((day) => (
-          <DayCell key={day.date} day={day} today={today} onClick={onDayClick} />
+          <DayCell
+            key={day.date}
+            day={day}
+            today={today}
+            venue={venue}
+            onClick={onDayClick}
+          />
         ))}
       </div>
     </div>

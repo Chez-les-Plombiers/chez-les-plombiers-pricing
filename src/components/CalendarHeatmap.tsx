@@ -2,6 +2,7 @@
 
 import { useRef, useCallback, useState, useMemo } from "react";
 import type { DayPricing } from "@/types";
+import type { VenueConfig } from "@/lib/venues";
 import { groupByMonth } from "@/lib/pricing-engine";
 import { MonthGrid } from "./MonthGrid";
 import { MonthNavigator } from "./MonthNavigator";
@@ -16,13 +17,14 @@ export interface WindowMonth {
 interface CalendarHeatmapProps {
   days: DayPricing[];
   months: WindowMonth[];
+  venue: VenueConfig;
 }
 
 function monthKey(year: number, month: number): string {
   return `${year}-${String(month + 1).padStart(2, "0")}`;
 }
 
-export function CalendarHeatmap({ days, months }: CalendarHeatmapProps) {
+export function CalendarHeatmap({ days, months, venue }: CalendarHeatmapProps) {
   const [selectedDay, setSelectedDay] = useState<DayPricing | null>(null);
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const monthRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -39,16 +41,16 @@ export function CalendarHeatmap({ days, months }: CalendarHeatmapProps) {
     fetch("/api/analytics", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date: day.date }),
+      body: JSON.stringify({ date: day.date, venue: venue.slug }),
     }).catch(() => {});
-  }, []);
+  }, [venue.slug]);
 
   const byMonth = groupByMonth(days);
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <TierLegend />
+        <TierLegend venue={venue} />
         <MonthNavigator months={months} activeKey={activeKey} onMonthClick={handleMonthClick} />
       </div>
 
@@ -65,6 +67,7 @@ export function CalendarHeatmap({ days, months }: CalendarHeatmapProps) {
                 year={year}
                 days={byMonth[key] || []}
                 today={today}
+                venue={venue}
                 onDayClick={handleDayClick}
               />
             </div>
@@ -73,7 +76,12 @@ export function CalendarHeatmap({ days, months }: CalendarHeatmapProps) {
       </div>
 
       {selectedDay && (
-        <DayModal day={selectedDay} allDays={days} onClose={() => setSelectedDay(null)} />
+        <DayModal
+          day={selectedDay}
+          allDays={days}
+          venue={venue}
+          onClose={() => setSelectedDay(null)}
+        />
       )}
     </div>
   );
