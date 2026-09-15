@@ -5,16 +5,28 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { X, Loader2 } from "lucide-react";
 import type { TierSlug, TimeSlot } from "@/types";
 import { TIME_SLOT_LABELS } from "@/types";
-import { TIERS, DAY_OF_WEEK_PRICES, FW_PRICE, HALF_DAY_RATIO } from "@/lib/tier-config";
+import { TIERS } from "@/lib/tier-config";
+import { getBasePrice } from "@/lib/pricing-engine";
+import { hasSlots, type VenueConfig } from "@/lib/venues";
 
-// Sensible default prices per tier for bulk operations
-function getDefaultPricesForTier(tierSlug: TierSlug): Record<TimeSlot, number> {
-  let base: number;
-  if (tierSlug === "fashion-week") base = FW_PRICE;
-  else if (tierSlug === "low") base = DAY_OF_WEEK_PRICES[1]; // Mon = 1000
-  else base = DAY_OF_WEEK_PRICES[3]; // Wed = 3000 (mid-range)
-  const halfDay = Math.round(base * HALF_DAY_RATIO / 100) * 100;
-  return { matinee: halfDay, "apres-midi": halfDay, "journee-complete": base };
+/**
+ * Prix de départ proposés pour une édition en masse, dérivés du lieu courant.
+ * Auparavant figés sur la grille de L'ATELIER, ils proposaient 3 000 € sur LA
+ * BOUTIQUE. On échantillonne la grille réelle du lieu : un lundi pour la
+ * demande basse, un mercredi pour la demande soutenue, et une date de Fashion
+ * Week pour le palier haut.
+ */
+function getDefaultPricesForTier(
+  tierSlug: TierSlug,
+  venue: VenueConfig
+): Record<TimeSlot, number> {
+  const sample =
+    tierSlug === "fashion-week"
+      ? venue.fashionWeekPrice
+      : getBasePrice(tierSlug === "low" ? "2026-01-05" : "2026-01-07", venue);
+  const ratio = hasSlots(venue) ? (venue.halfDayRatio ?? 1) : 1;
+  const halfDay = Math.round((sample * ratio) / 100) * 100;
+  return { matinee: halfDay, "apres-midi": halfDay, "journee-complete": sample };
 }
 
 // UI-visible tiers (merge premium/medium into one "Demande soutenue")
@@ -25,18 +37,21 @@ const UI_TIERS: { slug: TierSlug; label: string }[] = [
 ];
 
 interface AdminBulkEditorProps {
+  venue: VenueConfig;
+  /** Début de la fenêtre glissante affichée, pour borner le mode « jour de semaine ». */
+  windowStart: { year: number; month: number } | null;
   token: string;
   onClose: () => void;
   onSaved: () => void;
 }
 
-export function AdminBulkEditor({ token, onClose, onSaved }: AdminBulkEditorProps) {
+export function AdminBulkEditor({ venue, windowStart, token, onClose, onSaved }: AdminBulkEditorProps) {
   const [mode, setMode] = useState<"range" | "weekday">("range");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [weekdays, setWeekdays] = useState<number[]>([]);
   const [tier, setTier] = useState<TierSlug>("medium");
-  const [prices, setPrices] = useState(getDefaultPricesForTier("medium"));
+  const [prices, setPrices] = useState(getDefaultPricesForTier("medium", venue));
   const [isBooked, setIsBooked] = useState(false);
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
@@ -54,7 +69,7 @@ export function AdminBulkEditor({ token, onClose, onSaved }: AdminBulkEditorProp
 
   function handleTierChange(newTier: TierSlug) {
     setTier(newTier);
-    setPrices(getDefaultPricesForTier(newTier));
+    setPrices(getDefaultPricesForTier(newTier, venue));
   }
 
   function getDatesInRange(): string[] {
@@ -74,8 +89,12 @@ export function AdminBulkEditor({ token, onClose, onSaved }: AdminBulkEditorProp
   function getDatesByWeekday(): string[] {
     if (weekdays.length === 0) return [];
     const dates: string[] = [];
-    const current = new Date(Date.UTC(2026, 0, 1));
-    const end = new Date(Date.UTC(2026, 11, 31));
+    // Bornes = la fenêtre glissante réellement affichée, et non 2026 en dur :
+    // au 01/01/2027 l'édition en masse ne touchait plus aucune date visible.
+    const startY = windowStart?.year ?? new Date().getUTCFullYear();
+    const startM = windowStart?.month ?? new Date().getUTCMonth();
+    const current = new Date(Date.UTC(startY, startM, 1));
+    const end = new Date(Date.UTC(startY, startM + 12, 0));
     while (current <= end) {
       const dow = current.getUTCDay();
       const isoDow = dow === 0 ? 7 : dow;
@@ -100,7 +119,7 @@ export function AdminBulkEditor({ token, onClose, onSaved }: AdminBulkEditorProp
 
     try {
       for (const date of dates) {
-        const res = await fetch(`/api/pricing/${date}`, {
+        const res = await fetch(`/api/pricing/${date}?venue=${venue.slug}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -169,8 +188,8 @@ export function AdminBulkEditor({ token, onClose, onSaved }: AdminBulkEditorProp
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    min="2026-01-01"
-                    max="2026-12-31"
+                    
+                    
                     className="w-full border border-border bg-surface px-3 py-1.5 text-sm text-foreground focus:border-accent focus:outline-none"
                   />
                 </div>
@@ -180,8 +199,8 @@ export function AdminBulkEditor({ token, onClose, onSaved }: AdminBulkEditorProp
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    min="2026-01-01"
-                    max="2026-12-31"
+                    
+                    
                     className="w-full border border-border bg-surface px-3 py-1.5 text-sm text-foreground focus:border-accent focus:outline-none"
                   />
                 </div>
@@ -233,7 +252,11 @@ export function AdminBulkEditor({ token, onClose, onSaved }: AdminBulkEditorProp
 
             {/* Editable prices — FW = journée complète only */}
             {(Object.keys(TIME_SLOT_LABELS) as TimeSlot[])
-              .filter((slot) => tier !== "fashion-week" || slot === "journee-complete")
+              .filter((slot) =>
+                hasSlots(venue) && tier !== "fashion-week"
+                  ? true
+                  : slot === "journee-complete"
+              )
               .map((slot) => (
               <div key={slot}>
                 <label className="mb-1 block text-xs text-muted">

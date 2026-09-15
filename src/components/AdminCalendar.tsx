@@ -7,9 +7,10 @@ import { groupByMonth } from "@/lib/pricing-engine";
 import { TIERS } from "@/lib/tier-config";
 import { getMonthNameFR, getDayLetters, getISODayOfWeek, getDayOfMonth } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
+import { getVenue, listVenues, hasSlots, DEFAULT_VENUE, type VenueSlug } from "@/lib/venues";
 import { AdminDayEditor } from "./AdminDayEditor";
 import { AdminBulkEditor } from "./AdminBulkEditor";
-import { Layers, BarChart3, MessageSquare, RefreshCw, Lock, TrendingUp, ChevronDown, ChevronUp, Phone, Mail, Building2, Calendar, Users, Clock, Wallet } from "lucide-react";
+import { Layers, BarChart3, MessageSquare, RefreshCw, TrendingUp, ChevronDown, ChevronUp, Phone, Mail, Building2, Calendar, Users, Clock, Wallet } from "lucide-react";
 
 interface AdminCalendarProps {
   token: string;
@@ -22,6 +23,7 @@ interface AnalyticsData {
 
 interface Quote {
   id: string;
+  venue?: VenueSlug;
   date: string;
   timeSlot: string;
   firstName: string;
@@ -39,6 +41,8 @@ interface Quote {
 }
 
 export function AdminCalendar({ token }: AdminCalendarProps) {
+  const [venueSlug, setVenueSlug] = useState<VenueSlug>(DEFAULT_VENUE);
+  const [windowStart, setWindowStart] = useState<{ year: number; month: number } | null>(null);
   const [days, setDays] = useState<DayPricing[]>([]);
   const [selectedDay, setSelectedDay] = useState<DayPricing | null>(null);
   const [showBulk, setShowBulk] = useState(false);
@@ -47,23 +51,25 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showPassword, setShowPassword] = useState(false);
-  const [calendarPassword, setCalendarPassword] = useState("");
-  const [passwordSaved, setPasswordSaved] = useState(false);
   const [expandedQuote, setExpandedQuote] = useState<string | null>(null);
 
   const fetchPricing = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/pricing");
+      const res = await fetch(`/api/pricing?venue=${venueSlug}`);
       const data = await res.json();
-      setDays(data.days);
+      setDays(data.days ?? []);
+      // La fenêtre vient de l'API : elle glisse sur 12 mois et peut être à
+      // cheval sur deux années. L'admin ne doit plus supposer « 2026 ».
+      if (typeof data.startYear === "number") {
+        setWindowStart({ year: data.startYear, month: data.startMonth });
+      }
     } catch {
-      // Fallback: empty
+      setDays([]);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [venueSlug]);
 
   useEffect(() => {
     fetchPricing();
@@ -81,35 +87,6 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
     }
   };
 
-  const fetchCalendarPassword = async () => {
-    try {
-      const res = await fetch("/api/admin/calendar-password", {
-        headers: { Authorization: token },
-      });
-      const data = await res.json();
-      setCalendarPassword(data.password || "");
-    } catch {
-      // silently fail
-    }
-  };
-
-  const saveCalendarPassword = async () => {
-    try {
-      await fetch("/api/admin/calendar-password", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
-        body: JSON.stringify({ password: calendarPassword }),
-      });
-      setPasswordSaved(true);
-      setTimeout(() => setPasswordSaved(false), 2000);
-    } catch {
-      // silently fail
-    }
-  };
-
   const fetchQuotes = async () => {
     try {
       const res = await fetch("/api/quote", {
@@ -122,10 +99,48 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
     }
   };
 
+  const venue = getVenue(venueSlug);
   const byMonth = groupByMonth(days);
+
+  // Les mois affichés suivent la fenêtre renvoyée par l'API. L'ancienne
+  // version bouclait sur « 12 mois de 2026 » et indexait `byMonth` par numéro
+  // de mois, alors que le groupement est clé en "AAAA-MM" : la grille
+  // ressortait vide. Deux bugs corrigés d'un coup.
+  const windowMonths = Array.from({ length: 12 }, (_, i) => {
+    if (!windowStart) return null;
+    const abs = windowStart.month + i;
+    return { year: windowStart.year + Math.floor(abs / 12), month: abs % 12 };
+  }).filter((m): m is { year: number; month: number } => m !== null);
 
   return (
     <div className="flex flex-col gap-6">
+      {/*
+        Sélecteur de lieu. L'admin pilote les trois lieux depuis la même URL
+        (/admin) : chaque lieu a sa propre grille de surcharges en base, et
+        c'est le paramètre `?venue=` qui décide laquelle on lit et on écrit.
+      */}
+      <nav aria-label="Lieu administré" className="flex flex-wrap gap-px border border-border bg-border">
+        {listVenues().map((v) => {
+          const active = v.slug === venueSlug;
+          return (
+            <button
+              key={v.slug}
+              type="button"
+              onClick={() => { setSelectedDay(null); setVenueSlug(v.slug); }}
+              aria-current={active ? "true" : undefined}
+              className={cn(
+                "flex-1 basis-32 px-4 py-3 text-left font-mono text-xs font-bold uppercase tracking-widest transition-colors",
+                active
+                  ? "bg-card text-accent"
+                  : "bg-background text-muted hover:bg-card hover:text-foreground"
+              )}
+            >
+              {v.name}
+            </button>
+          );
+        })}
+      </nav>
+
       {/* Toolbar */}
       <div className="flex flex-wrap gap-2">
         <button
@@ -155,16 +170,6 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
           <MessageSquare className="h-3 w-3" />
           Devis
         </button>
-        <button
-          onClick={() => {
-            fetchCalendarPassword();
-            setShowPassword(!showPassword);
-          }}
-          className="flex items-center gap-2 border border-border px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-muted transition-colors hover:border-accent hover:text-accent"
-        >
-          <Lock className="h-3 w-3" />
-          Mot de passe
-        </button>
         <Link
           href="/admin/projections"
           className="flex items-center gap-2 border border-border px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-muted transition-colors hover:border-accent hover:text-accent"
@@ -188,33 +193,6 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
         </button>
       </div>
 
-      {/* Password panel */}
-      {showPassword && (
-        <div className="border border-border bg-card p-4">
-          <h3 className="mb-3 font-mono text-xs font-bold uppercase tracking-widest text-accent">
-            Mot de passe calendrier
-          </h3>
-          <p className="mb-3 text-xs text-muted">
-            Ce mot de passe protège l&apos;accès au calendrier public. Les clients doivent le saisir pour voir les tarifs.
-          </p>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={calendarPassword}
-              onChange={(e) => setCalendarPassword(e.target.value)}
-              placeholder="Mot de passe"
-              className="flex-1 border border-border bg-surface px-3 py-2 text-sm text-foreground focus:border-accent focus:outline-none"
-            />
-            <button
-              onClick={saveCalendarPassword}
-              className="border border-accent bg-accent px-4 py-2 font-mono text-xs uppercase tracking-wider text-background hover:bg-accent-hover"
-            >
-              {passwordSaved ? "Sauvegardé ✓" : "Sauvegarder"}
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Analytics panel */}
       {showAnalytics && analytics && (
         <div className="border border-border bg-card p-4">
@@ -236,7 +214,7 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
       {showQuotes && (
         <div className="border border-border bg-card p-4">
           <h3 className="mb-3 font-mono text-xs font-bold uppercase tracking-widest text-accent">
-            Demandes de devis ({quotes.length})
+            Demandes de devis ({quotes.length}) — tous lieux confondus
           </h3>
           {quotes.length === 0 ? (
             <p className="text-xs text-muted">
@@ -341,16 +319,17 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
 
       {/* Calendar grid */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {Array.from({ length: 12 }).map((_, month) => {
-          const monthDays = byMonth[month] || [];
+        {windowMonths.map(({ year, month }) => {
+          const key = `${year}-${String(month + 1).padStart(2, "0")}`;
+          const monthDays = byMonth[key] || [];
           const dayLetters = getDayLetters();
           const firstDayISO = monthDays.length > 0 ? getISODayOfWeek(monthDays[0].date) : 1;
           const emptySlots = firstDayISO - 1;
 
           return (
-            <div key={month} className="border border-border bg-card p-3">
+            <div key={key} className="border border-border bg-card p-3">
               <h3 className="mb-2 font-mono text-xs font-bold uppercase tracking-widest text-accent">
-                {getMonthNameFR(month)} 2026
+                {getMonthNameFR(month)} {year}
               </h3>
               <div className="grid grid-cols-7 gap-px">
                 {dayLetters.map((letter, i) => (
@@ -367,7 +346,12 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
                 {monthDays.map((day) => {
                   const tier = TIERS[day.tier];
                   const fullyBooked = day.isBooked || (day.isBookedMorning && day.isBookedAfternoon);
-                  const hasHalfBooking = !fullyBooked && (day.isBookedMorning || day.isBookedAfternoon);
+                  const hasHalfBooking =
+                    hasSlots(venue) &&
+                    !fullyBooked &&
+                    (day.isBookedMorning || day.isBookedAfternoon);
+                  const hasOption =
+                    day.isOption || day.isOptionMorning || day.isOptionAfternoon;
                   return (
                     <button
                       key={day.date}
@@ -381,6 +365,16 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
                       <span className="relative z-10 text-foreground">
                         {getDayOfMonth(day.date)}
                       </span>
+                      {hasOption && (
+                        <div
+                          className="absolute inset-0"
+                          style={{
+                            backgroundImage:
+                              "repeating-linear-gradient(45deg, transparent 0 3px, rgba(0,0,0,0.55) 3px 6px)",
+                          }}
+                          aria-hidden
+                        />
+                      )}
                       {/* Full day booked or no half-day booking: single background */}
                       {!hasHalfBooking && (
                         <div
@@ -428,6 +422,7 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
       {selectedDay && (
         <AdminDayEditor
           day={selectedDay}
+          venue={venue}
           token={token}
           onClose={() => setSelectedDay(null)}
           onSaved={() => {
@@ -440,6 +435,8 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
       {/* Bulk editor modal */}
       {showBulk && (
         <AdminBulkEditor
+          venue={venue}
+          windowStart={windowStart}
           token={token}
           onClose={() => setShowBulk(false)}
           onSaved={() => {

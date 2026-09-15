@@ -1,3 +1,4 @@
+import { FileText, Info } from "lucide-react";
 import type { VenueConfig } from "@/lib/venues";
 import { formatPrice } from "@/lib/date-utils";
 
@@ -12,22 +13,34 @@ const DAYS: { iso: number; label: string }[] = [
   { iso: 7, label: "Dim" },
 ];
 
+const INFOS_URL = "https://chezlesplombiers.fr/infos";
+const WHATSAPP_URL = "https://wa.me/33761471073";
+
 interface BasePriceGridProps {
   venue: VenueConfig;
 }
 
 /**
- * Encart « Tarifs de base ».
+ * Encart unique : tarifs de base et conditions essentielles.
+ *
+ * Les conditions vivaient sous le calendrier, donc après douze grilles
+ * mensuelles — personne ne descendait jusque-là. Elles remontent ici, juste
+ * sous les prix, là où se pose la question du budget. D'où la forme très
+ * compacte : une ligne par sujet, le détail reste dans les CGL.
  *
  * Les montants viennent de la configuration du lieu : l'encart ne peut donc
- * jamais diverger du moteur de pricing. Un lieu à tarif unique affiche une
- * seule ligne — sept cases identiques n'apprendraient rien.
+ * jamais diverger ni du moteur de pricing, ni des CGL signées.
+ *
+ * ⚠️ NE PAS détailler ici les prestations de sécurité (nombre d'agents,
+ * seuils, tarifs, mention SSIAP). Les locaux n'ont pas de classification ERP
+ * définitive, et publier ces règles attire l'attention sur un sujet qui se
+ * traite au devis. Décision Étienne, 15/09/2026.
  */
 export function BasePriceGrid({ venue }: BasePriceGridProps) {
   const pricing = venue.pricing;
 
   return (
-    <div className="mb-6 border border-border bg-surface px-4 py-3">
+    <section className="mb-6 border border-border bg-surface px-4 py-3">
       <p className="font-mono text-[10px] uppercase tracking-widest text-muted">
         Tarifs de base — journée complète HT · {venue.capacityLabel}
       </p>
@@ -35,7 +48,9 @@ export function BasePriceGrid({ venue }: BasePriceGridProps) {
       {pricing.kind === "flat" ? (
         <p className="mt-2 font-mono text-lg font-bold text-foreground">
           {formatPrice(pricing.price)}{" "}
-          <span className="text-xs font-normal text-muted">/ jour, tous les jours</span>
+          <span className="text-xs font-normal text-muted">
+            / jour, tous les jours
+          </span>
         </p>
       ) : (
         <dl className="mt-2 grid grid-cols-4 gap-x-3 gap-y-2 sm:grid-cols-7">
@@ -57,10 +72,69 @@ export function BasePriceGrid({ venue }: BasePriceGridProps) {
         <span className="font-mono text-foreground">
           {formatPrice(venue.fashionWeekPrice)}
         </span>{" "}
-        la journée. Le tarif applicable à une date s&apos;affiche en cliquant
+        la journée. Le tarif exact d&apos;une date s&apos;affiche en cliquant
         dessus. Ces tarifs sont indicatifs et susceptibles d&apos;évoluer selon
-        la demande : contactez-nous via WhatsApp pour confirmation.
+        la demande.
       </p>
-    </div>
+
+      {/* Conditions essentielles — une ligne par sujet, le détail est aux CGL. */}
+      <dl className="mt-3 grid gap-x-6 gap-y-2 border-t border-border pt-3 text-xs text-muted sm:grid-cols-3">
+        <div>
+          <dt className="font-mono text-[10px] uppercase tracking-widest text-venue">
+            Compris
+          </dt>
+          <dd className="mt-0.5">
+            Location seule, ménage de fin d&apos;événement inclus.
+          </dd>
+        </div>
+        <div>
+          <dt className="font-mono text-[10px] uppercase tracking-widest text-venue">
+            En supplément
+          </dt>
+          <dd className="mt-0.5">
+            Des prestations peuvent s&apos;ajouter selon la nature de
+            l&apos;événement.
+          </dd>
+        </div>
+        <div>
+          <dt className="font-mono text-[10px] uppercase tracking-widest text-venue">
+            Dépôt de garantie
+          </dt>
+          <dd className="mt-0.5">
+            {venue.deposit === null ? (
+              <>Aucun dépôt n&apos;est demandé pour ce lieu.</>
+            ) : (
+              <>
+                <span className="text-foreground">
+                  {formatPrice(venue.deposit)}
+                </span>{" "}
+                par virement, restitué sous 8 jours après l&apos;état des lieux.
+              </>
+            )}
+          </dd>
+        </div>
+      </dl>
+
+      <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">
+        <a
+          href={INFOS_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 border border-border px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wider text-muted transition-colors hover:border-accent hover:text-accent"
+        >
+          <Info className="h-3 w-3" />
+          Informations pratiques
+        </a>
+        <a
+          href={WHATSAPP_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 border border-border px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wider text-muted transition-colors hover:border-accent hover:text-accent"
+        >
+          <FileText className="h-3 w-3" />
+          Demander les conditions générales
+        </a>
+      </div>
+    </section>
   );
 }

@@ -6,6 +6,7 @@ import { X, Loader2, Trash2 } from "lucide-react";
 import type { DayPricing, TierSlug, TimeSlot } from "@/types";
 import { TIME_SLOT_LABELS } from "@/types";
 import { TIERS } from "@/lib/tier-config";
+import { hasSlots, type VenueConfig } from "@/lib/venues";
 
 // UI-visible tiers (merge premium/medium into one "Demande soutenue")
 const UI_TIERS: { slug: TierSlug; label: string }[] = [
@@ -17,12 +18,14 @@ import { formatDateFR, formatDayOfWeekFR } from "@/lib/date-utils";
 
 interface AdminDayEditorProps {
   day: DayPricing;
+  venue: VenueConfig;
   token: string;
   onClose: () => void;
   onSaved: () => void;
 }
 
-export function AdminDayEditor({ day, token, onClose, onSaved }: AdminDayEditorProps) {
+export function AdminDayEditor({ day, venue, token, onClose, onSaved }: AdminDayEditorProps) {
+  const multiSlot = hasSlots(venue);
   const [tier, setTier] = useState<TierSlug>(day.tier);
   const [prices, setPrices] = useState(day.prices);
   const [isBooked, setIsBooked] = useState(day.isBooked);
@@ -33,6 +36,8 @@ export function AdminDayEditor({ day, token, onClose, onSaved }: AdminDayEditorP
   const [error, setError] = useState<string | null>(null);
 
   const isFW = tier === "fashion-week";
+  // Un lieu mono-créneau n'expose ni prix de demi-journée ni réservation partielle.
+  const showSlots = multiSlot && !isFW;
 
   function handleTierChange(newTier: TierSlug) {
     setTier(newTier);
@@ -47,7 +52,7 @@ export function AdminDayEditor({ day, token, onClose, onSaved }: AdminDayEditorP
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/pricing/${day.date}`, {
+      const res = await fetch(`/api/pricing/${day.date}?venue=${venue.slug}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -68,7 +73,7 @@ export function AdminDayEditor({ day, token, onClose, onSaved }: AdminDayEditorP
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/pricing/${day.date}`, {
+      const res = await fetch(`/api/pricing/${day.date}?venue=${venue.slug}`, {
         method: "DELETE",
         headers: { Authorization: token },
       });
@@ -89,6 +94,9 @@ export function AdminDayEditor({ day, token, onClose, onSaved }: AdminDayEditorP
           <div className="flex items-start justify-between">
             <Dialog.Title className="font-mono text-sm font-bold uppercase tracking-widest text-foreground">
               {formatDayOfWeekFR(day.date)} {formatDateFR(day.date)}
+              <span className="mt-1 block font-mono text-[10px] tracking-widest text-accent">
+                {venue.name}
+              </span>
             </Dialog.Title>
             <Dialog.Close asChild>
               <button className="text-muted hover:text-foreground" aria-label="Fermer">
@@ -121,7 +129,7 @@ export function AdminDayEditor({ day, token, onClose, onSaved }: AdminDayEditorP
 
             {/* Prices */}
             {(Object.keys(TIME_SLOT_LABELS) as TimeSlot[])
-              .filter((slot) => !isFW || slot === "journee-complete")
+              .filter((slot) => (showSlots ? true : slot === "journee-complete"))
               .map((slot) => (
               <div key={slot}>
                 <label className="mb-1 block text-xs text-muted">
@@ -162,7 +170,7 @@ export function AdminDayEditor({ day, token, onClose, onSaved }: AdminDayEditorP
                 />
                 <span className="text-xs text-foreground">Journée complète réservée</span>
               </label>
-              {!isBooked && !isFW && (
+              {!isBooked && showSlots && (
                 <>
                   <label className="flex items-center gap-2">
                     <input
