@@ -99,12 +99,15 @@ export default async function VenuePage({
       */}
       <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-8 sm:px-6">
         {/*
-          Texte d'accueil : un visiteur qui arrive ici ne sait pas forcément
-          que la marque compte trois lieux, ni que ce calendrier les couvre
-          tous. La dernière phrase absorbe aussi les demandes multi-lieux, qui
-          se traitent de vive voix plutôt que dans l'outil.
+          Texte d'accueil : présente les trois lieux à qui ne les connaît pas,
+          et oriente les demandes multi-lieux vers un échange direct.
+
+          Masqué sur mobile (Étienne, 16/09/2026) : sur téléphone il repoussait
+          le sélecteur sous un écran de texte, alors que le sélecteur dit déjà
+          l'essentiel — les trois lieux, leur surface, leur capacité. Le contact
+          WhatsApp reste accessible en bas, dans l'encart des conditions.
         */}
-        <div className="order-1 mb-6 flex flex-col gap-3">
+        <div className="order-1 mb-6 hidden flex-col gap-3 sm:flex">
           {/*
             `text-pretty` empêche le mot orphelin en fin de paragraphe : viser
             « une seule ligne » ne tient qu'à une largeur d'écran donnée, alors
