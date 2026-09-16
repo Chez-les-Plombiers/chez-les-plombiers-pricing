@@ -21,7 +21,12 @@ interface BasePriceGridProps {
 }
 
 /**
- * Encart unique : tarifs de base et conditions essentielles.
+ * Encart unique : tarifs indicatifs et conditions essentielles.
+ *
+ * « À titre indicatif » plutôt que « de base » : la grille n'engage pas, et
+ * l'intitulé doit le dire avant les montants — c'est ce qui protège une
+ * hausse future. Ne pas revenir à une formulation qui se lirait comme un
+ * tarif ferme.
  *
  * Les conditions vivaient sous le calendrier, donc après douze grilles
  * mensuelles — personne ne descendait jusque-là. Elles remontent ici, juste
@@ -42,7 +47,7 @@ export function BasePriceGrid({ venue }: BasePriceGridProps) {
   return (
     <section className="mb-6 border border-border bg-surface px-4 py-3">
       <p className="font-mono text-[10px] uppercase tracking-widest text-muted">
-        Tarifs de base — journée complète HT · {venue.capacityLabel}
+        Tarifs à titre indicatif — journée complète HT · {venue.capacityLabel}
       </p>
 
       {pricing.kind === "flat" ? (
@@ -72,9 +77,8 @@ export function BasePriceGrid({ venue }: BasePriceGridProps) {
         <span className="font-mono text-foreground">
           {formatPrice(venue.fashionWeekPrice)}
         </span>{" "}
-        la journée. Le tarif exact d&apos;une date s&apos;affiche en cliquant
-        dessus. Ces tarifs sont indicatifs et susceptibles d&apos;évoluer selon
-        la demande.
+        la journée. Le tarif appliqué à une date s&apos;affiche en cliquant
+        dessus, et reste susceptible d&apos;évoluer selon la demande.
       </p>
 
       {/* Conditions essentielles — une ligne par sujet, le détail est aux CGL. */}
