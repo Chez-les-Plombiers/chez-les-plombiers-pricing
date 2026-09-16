@@ -9,15 +9,20 @@ import { getMonthNameFR, getDayLetters, getISODayOfWeek, getDayOfMonth } from "@
 import { cn } from "@/lib/utils";
 import { getVenue, listVenues, hasSlots, DEFAULT_VENUE, type VenueSlug } from "@/lib/venues";
 import { AdminDayEditor } from "./AdminDayEditor";
-import { AdminBulkEditor } from "./AdminBulkEditor";
-import { Layers, BarChart3, MessageSquare, RefreshCw, TrendingUp, ChevronDown, ChevronUp, Phone, Mail, Building2, Calendar, Users, Clock, Wallet } from "lucide-react";
+import { BarChart3, MessageSquare, RefreshCw, TrendingUp, ChevronDown, ChevronUp, Phone, Mail, Building2, Calendar, Users, Clock, Wallet } from "lucide-react";
 
 interface AdminCalendarProps {
   token: string;
 }
 
 interface AnalyticsData {
+  venue: VenueSlug;
   totalViews: number;
+  totalQuotes: number;
+  measuredSince: string | null;
+  legacyCount: number;
+  byWeekday: Array<{ iso: number; label: string; views: number; quotes: number }>;
+  byMonth: Array<{ key: string; label: string; views: number }>;
   topDates: Array<{ date: string; count: number }>;
 }
 
@@ -45,7 +50,6 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
   const [windowStart, setWindowStart] = useState<{ year: number; month: number } | null>(null);
   const [days, setDays] = useState<DayPricing[]>([]);
   const [selectedDay, setSelectedDay] = useState<DayPricing | null>(null);
-  const [showBulk, setShowBulk] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [showQuotes, setShowQuotes] = useState(false);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
@@ -75,17 +79,24 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
     fetchPricing();
   }, [fetchPricing]);
 
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     try {
-      const res = await fetch("/api/analytics", {
+      const res = await fetch(`/api/analytics?venue=${venueSlug}`, {
         headers: { Authorization: token },
       });
       const data = await res.json();
       setAnalytics(data);
     } catch {
-      // silently fail
+      setAnalytics(null);
     }
-  };
+  }, [venueSlug, token]);
+
+  // Le panneau suit le lieu sélectionné : auparavant il affichait le même
+  // total quoi qu'on choisisse, ce qui laissait croire à un bug d'affichage
+  // alors que le lieu n'était simplement pas enregistré.
+  useEffect(() => {
+    if (showAnalytics) fetchAnalytics();
+  }, [showAnalytics, fetchAnalytics]);
 
   const fetchQuotes = async () => {
     try {
@@ -143,13 +154,13 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
 
       {/* Toolbar */}
       <div className="flex flex-wrap gap-2">
-        <button
-          onClick={() => setShowBulk(true)}
-          className="flex items-center gap-2 border border-border px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-muted transition-colors hover:border-accent hover:text-accent"
+        <Link
+          href="/admin/finances"
+          className="flex items-center gap-2 border border-accent bg-accent px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-wider text-background transition-colors hover:bg-accent-hover"
         >
-          <Layers className="h-3 w-3" />
-          Édition en masse
-        </button>
+          <Wallet className="h-3 w-3" />
+          Finances
+        </Link>
         <button
           onClick={() => {
             fetchAnalytics();
@@ -177,13 +188,6 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
           <TrendingUp className="h-3 w-3" />
           Projections
         </Link>
-        <Link
-          href="/admin/finances"
-          className="flex items-center gap-2 border border-border px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-muted transition-colors hover:border-accent hover:text-accent"
-        >
-          <Wallet className="h-3 w-3" />
-          Finances
-        </Link>
         <button
           onClick={fetchPricing}
           className="flex items-center gap-2 border border-border px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-muted transition-colors hover:border-accent hover:text-accent"
@@ -195,18 +199,109 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
 
       {/* Analytics panel */}
       {showAnalytics && analytics && (
-        <div className="border border-border bg-card p-4">
-          <h3 className="mb-3 font-mono text-xs font-bold uppercase tracking-widest text-accent">
-            Analytics — {analytics.totalViews} vues totales
-          </h3>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {analytics.topDates.slice(0, 8).map(({ date, count }) => (
-              <div key={date} className="flex justify-between border border-border bg-surface p-2">
-                <span className="text-xs text-foreground">{date}</span>
-                <span className="font-mono text-xs text-accent">{count}</span>
-              </div>
-            ))}
+        <div className="flex flex-col gap-4 border border-border bg-card p-4">
+          <div>
+            <h3 className="font-mono text-xs font-bold uppercase tracking-widest text-accent">
+              Intérêt mesuré — {venue.name}
+            </h3>
+            <p className="mt-1 text-xs text-muted">
+              {analytics.totalViews} consultation
+              {analytics.totalViews > 1 ? "s" : ""} de date et{" "}
+              {analytics.totalQuotes} demande
+              {analytics.totalQuotes > 1 ? "s" : ""} de devis
+              {analytics.measuredSince
+                ? ` depuis le ${new Date(analytics.measuredSince).toLocaleDateString("fr-FR")}`
+                : ""}
+              .
+            </p>
           </div>
+
+          {/*
+            L'agrégat par jour de la semaine est le seul qui réponde à la
+            question tarifaire : un jour très consulté mais jamais devisé
+            signale un prix mal placé, un jour jamais consulté signale une
+            absence de demande — qu'aucune baisse de prix ne corrigera.
+          */}
+          <div>
+            <h4 className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted">
+              Par jour de la semaine
+            </h4>
+            <div className="flex flex-col gap-1">
+              {(() => {
+                const max = Math.max(1, ...analytics.byWeekday.map((d) => d.views));
+                return analytics.byWeekday.map((d) => (
+                  <div key={d.iso} className="flex items-center gap-3">
+                    <span className="w-20 shrink-0 text-xs text-muted">{d.label}</span>
+                    <div className="h-4 flex-1 bg-surface">
+                      <div
+                        className="h-full bg-accent/50"
+                        style={{ width: `${(d.views / max) * 100}%` }}
+                      />
+                    </div>
+                    <span className="w-24 shrink-0 text-right font-mono text-xs text-foreground">
+                      {d.views} vue{d.views > 1 ? "s" : ""}
+                    </span>
+                    <span
+                      className={cn(
+                        "w-20 shrink-0 text-right font-mono text-xs",
+                        d.quotes > 0 ? "text-accent" : "text-muted"
+                      )}
+                    >
+                      {d.quotes} devis
+                    </span>
+                  </div>
+                ));
+              })()}
+            </div>
+          </div>
+
+          {analytics.byMonth.length > 0 && (
+            <div>
+              <h4 className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted">
+                Par mois consulté
+              </h4>
+              <div className="flex flex-wrap gap-1">
+                {analytics.byMonth.map((m) => (
+                  <span
+                    key={m.key}
+                    className="border border-border bg-surface px-2 py-1 font-mono text-[10px] text-muted"
+                  >
+                    {m.label}{" "}
+                    <span className="text-foreground">{m.views}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {analytics.topDates.length > 0 && (
+            <div>
+              <h4 className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted">
+                Dates les plus consultées
+              </h4>
+              <div className="grid grid-cols-2 gap-1 sm:grid-cols-4">
+                {analytics.topDates.map(({ date, count }) => (
+                  <div
+                    key={date}
+                    className="flex justify-between border border-border bg-surface px-2 py-1"
+                  >
+                    <span className="text-xs text-foreground">{date}</span>
+                    <span className="font-mono text-xs text-accent">{count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {analytics.legacyCount > 0 && (
+            <p className="border-t border-border pt-2 text-[10px] text-muted">
+              {analytics.legacyCount} consultation
+              {analytics.legacyCount > 1 ? "s" : ""} enregistrée
+              {analytics.legacyCount > 1 ? "s" : ""} avant le passage en
+              multi-lieux ne portent pas de lieu : elles sont attribuées à
+              L&apos;ATELIER, seul lieu affiché à l&apos;époque.
+            </p>
+          )}
         </div>
       )}
 
@@ -254,7 +349,13 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-xs text-muted">{dateFr}</span>
+                        {/*
+                          La date de réception, pas celle de l'évènement : on
+                          consulte cette liste pour vérifier qu'aucune demande
+                          n'a été manquée. La date de l'évènement reste dans
+                          le détail dépliable.
+                        */}
+                        <span className="text-xs text-muted">Reçu le {createdFr}</span>
                         {isExpanded ? (
                           <ChevronUp className="h-3 w-3 text-muted" />
                         ) : (
@@ -432,19 +533,6 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
         />
       )}
 
-      {/* Bulk editor modal */}
-      {showBulk && (
-        <AdminBulkEditor
-          venue={venue}
-          windowStart={windowStart}
-          token={token}
-          onClose={() => setShowBulk(false)}
-          onSaved={() => {
-            setShowBulk(false);
-            fetchPricing();
-          }}
-        />
-      )}
     </div>
   );
 }

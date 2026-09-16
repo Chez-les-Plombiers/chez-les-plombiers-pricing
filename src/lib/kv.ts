@@ -187,11 +187,11 @@ export async function setChargesPostes(year: number, postes: ChargePoste[]): Pro
 
 // --- Analytics ---
 
-export async function trackView(date: string): Promise<void> {
+export async function trackView(date: string, venue: VenueSlug): Promise<void> {
   const redis = getRedis();
   if (!redis) return;
   const events = await getAnalytics();
-  events.push({ date, viewedAt: new Date().toISOString() });
+  events.push({ date, venue, viewedAt: new Date().toISOString() });
   // Keep last 10000 events
   if (events.length > 10000) events.splice(0, events.length - 10000);
   await redis.set(ANALYTICS_KEY, events);

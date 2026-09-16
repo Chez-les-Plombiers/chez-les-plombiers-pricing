@@ -75,6 +75,13 @@ export interface QuoteRequest {
 export interface AnalyticsEvent {
   date: string; // YYYY-MM-DD
   viewedAt: string;
+  /**
+   * Lieu consulté. Optionnel : les évènements antérieurs au 16/09/2026 n'en
+   * portent pas — à cette date le calendrier ne couvrait que L'ATELIER, puis
+   * la route a reçu le lieu sans l'enregistrer. Un évènement sans `venue` est
+   * donc attribué à L'ATELIER, ce qui est exact pour l'historique.
+   */
+  venue?: VenueSlug;
 }
 
 export const TIME_SLOT_LABELS: Record<TimeSlot, string> = {
