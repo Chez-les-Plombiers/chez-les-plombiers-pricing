@@ -3,7 +3,20 @@
 ## Projet
 Webapp calendrier affichant les prix de location par jour pour un lieu événementiel brutaliste de 200m² au 39 rue des Bourdonnais, 75001 Paris.
 
-**URL :** `pricing.chezlesplombiers.fr`
+**URL :** `www.chezlesplombiers.fr/tarifs` — l'application est servie sous le domaine
+principal par une **réécriture multi-zones** (`basePath: "/tarifs"`).
+`pricing.chezlesplombiers.fr` redirige en 308 et n'est plus l'adresse publique.
+
+⚠️ **Piège de `basePath`** : Next préfixe les liens (`next/link`), les images
+(`next/image`) et les assets, **mais pas les `fetch` écrits à la main**. Tout appel
+réseau doit passer par `apiUrl()` (`src/lib/base-path.ts`), sinon il part sur
+`www.chezlesplombiers.fr/api/…` — une route du site vitrine, qui n'existe pas. L'échec
+est silencieux : tout compile, tout s'affiche, seules les actions échouent (devis,
+connexion admin, enregistrement des prix).
+
+⚠️ **Indexation** : le `noindex` global a été retiré le 19/09/2026. Les trois pages
+d'administration gardent chacune le leur — ne pas réintroduire de `robots` global.
+
 **GitHub :** GrowthAgence/chez-les-plombiers-pricing (private)
 
 ## Stack
@@ -27,7 +40,6 @@ npm run lint     # ESLint
 src/
 ├── app/
 │   ├── page.tsx                    # Server (dynamic) : lit overrides KV
-│   ├── gate/page.tsx               # Page d'accès par code (cookie 90j)
 │   ├── admin/                      # Panel admin protégé par mot de passe
 │   │   ├── page.tsx / client.tsx   # Dashboard calendrier admin
 │   │   ├── projections/            # Projections financières (scénarios)
@@ -35,7 +47,6 @@ src/
 │   └── api/
 │       ├── admin/auth/             # POST: auth par mot de passe
 │       ├── admin/calendar-password/ # GET/PUT: mot de passe calendrier (KV)
-│       ├── gate/                   # POST: vérification code → set cookie
 │       ├── pricing/                # GET: pricing annuel, POST: créer override
 │       ├── pricing/[date]/         # PUT/DELETE: modifier/supprimer override
 │       ├── availability/           # GET/PUT: jours réservés
@@ -51,7 +62,6 @@ src/
 │       ├── webhook/pipedrive/      # POST: webhook Pipedrive (deal stage change → KV)
 │       ├── webhook/calendly/      # POST: webhook Calendly (invitee.created → Pipedrive deal)
 │       └── webhook/email-lead/    # POST: webhook générique email (n8n → Pipedrive deal, auth X-Webhook-Secret)
-├── middleware.ts                    # Auth cookie gate (redirige vers /gate si pas de cookie)
 ├── components/
 │   ├── CalendarHeatmap.tsx          # Grille annuelle 12 mois
 │   ├── MonthGrid.tsx                # Grille 7 colonnes L-D
@@ -283,7 +293,7 @@ Mois | Statut (auto) | Charges | CA | CA Prévi. | Résultat | Cumul
 - Pas de border-radius (esthétique brutaliste)
 - Font mono Space Mono pour titres/boutons, Inter pour le corps
 - Couleurs : accent laiton #C8A96E, fond charbon #1A1A1A
-- noindex partout (robots.txt + metadata)
+- pages publiques **indexées** depuis le 19/09/2026 ; `noindex` conservé page par page sur `/admin`
 - Page publique = `force-dynamic` (lit KV à chaque requête)
 - SaveBadge = vert emerald, basé sur coeff booking window (pas de comparaison cross-tier)
 
