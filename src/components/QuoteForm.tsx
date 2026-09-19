@@ -1,4 +1,5 @@
 "use client";
+import { apiUrl } from "@/lib/base-path";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { ArrowLeft, Send, Loader2 } from "lucide-react";
@@ -167,7 +168,7 @@ export function QuoteForm({ day, allDays, venue, timeSlot, onBack, onSuccess }: 
     };
 
     try {
-      const res = await fetch("/api/quote", {
+      const res = await fetch(apiUrl("/api/quote"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

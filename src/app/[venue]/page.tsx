@@ -26,9 +26,20 @@ export async function generateMetadata({
   const { venue: slug } = await params;
   if (!isVenueSlug(slug)) return {};
   const venue = getVenue(slug);
+  // Indexable depuis le 19/09/2026 : une page par lieu, chacune avec son titre,
+  // sa description et son URL canonique sur le domaine principal. C'est ce qui
+  // permet de ressortir sur « tarif location <lieu> Paris » — impossible si les
+  // trois lieux partageaient une seule adresse.
   return {
-    title: `${venue.name} — Calendrier tarifaire`,
-    robots: { index: false, follow: false },
+    title: `Tarifs ${venue.name} — location à Paris 1er`,
+    description: `Tarifs et disponibilités de ${venue.name} — ${venue.capacityLabel}, 39 rue des Bourdonnais, Paris 1er. Prix affichés jour par jour, calendrier à jour, devis immédiat.`,
+    alternates: { canonical: `/tarifs/${venue.slug}` },
+    openGraph: {
+      title: `Tarifs ${venue.name} — Chez Les Plombiers`,
+      description: `${venue.tagline}. Prix et disponibilités jour par jour.`,
+      url: `/tarifs/${venue.slug}`,
+      type: "website",
+    },
   };
 }
 

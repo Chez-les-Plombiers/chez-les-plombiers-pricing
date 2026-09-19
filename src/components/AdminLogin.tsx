@@ -1,4 +1,5 @@
 "use client";
+import { apiUrl } from "@/lib/base-path";
 
 import { useState } from "react";
 import { Lock, Loader2 } from "lucide-react";
@@ -18,7 +19,7 @@ export function AdminLogin({ onLogin }: AdminLoginProps) {
     setError(null);
 
     try {
-      const res = await fetch("/api/admin/auth", {
+      const res = await fetch(apiUrl("/api/admin/auth"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),

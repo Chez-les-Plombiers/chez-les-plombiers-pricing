@@ -14,15 +14,29 @@ const spaceMono = Space_Mono({
   subsets: ["latin"],
 });
 
+/**
+ * ⚠️ Le `noindex` global a été retiré le 19/09/2026 (décision Étienne).
+ *
+ * Il rendait invisibles les seules pages du site qui portent des prix — or
+ * dans ce marché personne n'en publie, c'est la différenciation de CHEZ LES
+ * PLOMBIERS. Les pages d'administration gardent chacune leur propre `robots`,
+ * il n'y a donc rien à rouvrir par mégarde ici.
+ *
+ * `metadataBase` pointe sur le domaine principal, pas sur le déploiement :
+ * les pages sont servies sous `www.chezlesplombiers.fr/tarifs`, et les URL
+ * canoniques doivent le dire, sinon Google indexerait le sous-domaine.
+ */
 export const metadata: Metadata = {
-  title: "Tarifs Location — Chez Les Plombiers",
+  metadataBase: new URL("https://www.chezlesplombiers.fr"),
+  title: "Tarifs et disponibilités — Chez Les Plombiers",
   description:
-    "Calendrier de prix dynamique pour la location du lieu événementiel Chez Les Plombiers, 39 rue des Bourdonnais, Paris 1er.",
-  robots: { index: false, follow: false },
+    "Les prix, affichés. Tarifs et disponibilités en temps réel des trois lieux de CHEZ LES PLOMBIERS — l'Atelier, la Boutique et l'Appartement — 39 rue des Bourdonnais, Paris 1er.",
+  alternates: { canonical: "/tarifs" },
   openGraph: {
-    title: "Tarifs Location — Chez Les Plombiers",
+    title: "Tarifs et disponibilités — Chez Les Plombiers",
     description:
-      "Consultez les tarifs et disponibilités pour la location de notre lieu événementiel de 200 m² au cœur de Paris.",
+      "Trois lieux à la même adresse, à deux pas du Pont Neuf. Consultez les tarifs et les disponibilités, jour par jour.",
+    url: "/tarifs",
     siteName: "Chez Les Plombiers",
     locale: "fr_FR",
     type: "website",

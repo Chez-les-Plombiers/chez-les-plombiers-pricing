@@ -7,7 +7,7 @@ export function Navbar() {
       <div className="mx-auto flex max-w-7xl items-center justify-between">
         <div className="flex items-center gap-4">
           <a
-            href="https://chezlesplombiers.fr"
+            href="https://www.chezlesplombiers.fr"
             className="flex items-center gap-2 text-muted hover:text-foreground transition-colors"
             title="Retour au site"
           >

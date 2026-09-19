@@ -13,7 +13,7 @@ const DAYS: { iso: number; label: string }[] = [
   { iso: 7, label: "Dim" },
 ];
 
-const INFOS_URL = "https://chezlesplombiers.fr/infos";
+const INFOS_URL = "https://www.chezlesplombiers.fr/infos";
 const WHATSAPP_URL = "https://wa.me/33761471073";
 
 interface BasePriceGridProps {

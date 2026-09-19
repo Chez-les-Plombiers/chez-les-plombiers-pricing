@@ -1,4 +1,5 @@
 "use client";
+import { apiUrl } from "@/lib/base-path";
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
@@ -174,7 +175,7 @@ function FinancesContent({
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch(`/api/finances?year=${year}`, {
+      const res = await fetch(apiUrl(`/api/finances?year=${year}`), {
         headers: { Authorization: token },
       });
       if (res.status === 401) {
@@ -208,7 +209,7 @@ function FinancesContent({
       const key = `${month}`;
       if (saveTimeout.current[key]) clearTimeout(saveTimeout.current[key]);
       saveTimeout.current[key] = setTimeout(async () => {
-        await fetch(`/api/finances/${year}/${month}`, {
+        await fetch(apiUrl(`/api/finances/${year}/${month}`), {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -229,7 +230,7 @@ function FinancesContent({
   const handleReset = useCallback(async () => {
     if (!confirm(`Effacer toutes les données saisies pour ${year} et revenir aux valeurs par défaut ?`))
       return;
-    await fetch(`/api/finances/reset/${year}`, {
+    await fetch(apiUrl(`/api/finances/reset/${year}`), {
       method: "POST",
       headers: { Authorization: token },
     });
@@ -237,7 +238,7 @@ function FinancesContent({
   }, [token, fetchData, year]);
 
   const handleExport = useCallback(async () => {
-    const res = await fetch(`/api/finances/export?year=${year}`, {
+    const res = await fetch(apiUrl(`/api/finances/export?year=${year}`), {
       headers: { Authorization: token },
     });
     if (!res.ok) return;
@@ -261,7 +262,7 @@ function FinancesContent({
 
   const reattributeInvoice = useCallback(
     async (invoiceId: number, newMonth: number) => {
-      await fetch("/api/finances/invoice-override", {
+      await fetch(apiUrl("/api/finances/invoice-override"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -945,7 +946,7 @@ function ChargesFixesModal({
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/finances/charges-postes?year=${year}`, {
+    fetch(apiUrl(`/api/finances/charges-postes?year=${year}`), {
       headers: { Authorization: token },
     })
       .then((r) => r.json())
@@ -955,7 +956,7 @@ function ChargesFixesModal({
   const handleSave = async () => {
     if (!postes) return;
     setSaving(true);
-    await fetch("/api/finances/charges-postes", {
+    await fetch(apiUrl("/api/finances/charges-postes"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

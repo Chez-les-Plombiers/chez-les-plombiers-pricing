@@ -135,7 +135,7 @@ export async function sendQuoteNotification(
   </div>
 
   <div style="padding: 16px 24px; background: #1A1A1A; color: #888; font-size: 12px;">
-    Reçu le ${createdAt} via le calendrier tarifaire — <a href="https://pricing.chezlesplombiers.fr/admin" style="color: #C8A96E;">Voir dans l'admin</a>
+    Reçu le ${createdAt} via le calendrier tarifaire — <a href="https://www.chezlesplombiers.fr/tarifs/admin" style="color: #C8A96E;">Voir dans l'admin</a>
   </div>
 </div>`;
 

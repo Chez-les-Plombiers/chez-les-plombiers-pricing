@@ -40,6 +40,9 @@ export function generateICal(days: DayPricing[]): string {
       `DESCRIPTION:${description}`,
       `LOCATION:39 rue des Bourdonnais\\, 75001 Paris`,
       `CATEGORIES:${tier.label}`,
+      // ⚠️ Ne PAS aligner ce domaine sur la nouvelle adresse /tarifs : un UID
+      // iCal est un identifiant stable. Le changer ferait réapparaître tout
+      // l'agenda en double chez les gens qui l'ont déjà importé.
       `UID:${day.date}@pricing.chezlesplombiers.fr`,
       "END:VEVENT"
     );

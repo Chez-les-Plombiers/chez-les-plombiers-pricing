@@ -1,4 +1,5 @@
 "use client";
+import { apiUrl } from "@/lib/base-path";
 
 import { useCallback, useState, useMemo } from "react";
 import type { DayPricing } from "@/types";
@@ -42,7 +43,7 @@ export function CalendarHeatmap({ days, months, venue }: CalendarHeatmapProps) {
   const handleDayClick = useCallback((day: DayPricing) => {
     setSelectedDay(day);
     // Track analytics
-    fetch("/api/analytics", {
+    fetch(apiUrl("/api/analytics"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ date: day.date, venue: venue.slug }),

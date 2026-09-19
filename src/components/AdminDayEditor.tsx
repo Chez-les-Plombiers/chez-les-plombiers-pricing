@@ -1,4 +1,5 @@
 "use client";
+import { apiUrl } from "@/lib/base-path";
 
 import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
@@ -52,7 +53,7 @@ export function AdminDayEditor({ day, venue, token, onClose, onSaved }: AdminDay
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/pricing/${day.date}?venue=${venue.slug}`, {
+      const res = await fetch(apiUrl(`/api/pricing/${day.date}?venue=${venue.slug}`), {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -73,7 +74,7 @@ export function AdminDayEditor({ day, venue, token, onClose, onSaved }: AdminDay
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/pricing/${day.date}?venue=${venue.slug}`, {
+      const res = await fetch(apiUrl(`/api/pricing/${day.date}?venue=${venue.slug}`), {
         method: "DELETE",
         headers: { Authorization: token },
       });

@@ -14,7 +14,7 @@ import type { TimeSlot } from "@/types";
 
 export type VenueSlug = "atelier" | "boutique" | "appartement";
 
-/** Lieu affiché par défaut à la racine de pricing.chezlesplombiers.fr */
+/** Lieu retenu quand aucun lieu valide n'est fourni (routes et API). */
 export const DEFAULT_VENUE: VenueSlug = "atelier";
 
 /** Ordre d'affichage dans le sélecteur (décision Étienne, 15/09/2026). */

@@ -1,4 +1,5 @@
 "use client";
+import { apiUrl } from "@/lib/base-path";
 
 import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
@@ -60,7 +61,7 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
   const fetchPricing = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/pricing?venue=${venueSlug}`);
+      const res = await fetch(apiUrl(`/api/pricing?venue=${venueSlug}`));
       const data = await res.json();
       setDays(data.days ?? []);
       // La fenêtre vient de l'API : elle glisse sur 12 mois et peut être à
@@ -81,7 +82,7 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
 
   const fetchAnalytics = useCallback(async () => {
     try {
-      const res = await fetch(`/api/analytics?venue=${venueSlug}`, {
+      const res = await fetch(apiUrl(`/api/analytics?venue=${venueSlug}`), {
         headers: { Authorization: token },
       });
       const data = await res.json();
@@ -100,7 +101,7 @@ export function AdminCalendar({ token }: AdminCalendarProps) {
 
   const fetchQuotes = async () => {
     try {
-      const res = await fetch("/api/quote", {
+      const res = await fetch(apiUrl("/api/quote"), {
         headers: { Authorization: token },
       });
       const data = await res.json();
