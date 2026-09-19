@@ -4,6 +4,7 @@ import { listVenues } from "@/lib/venues";
 import { formatPrice } from "@/lib/date-utils";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { WhatsAppLink } from "@/components/WhatsAppLink";
 
 /**
  * Page d'accueil du pricing, servie à `www.chezlesplombiers.fr/tarifs`.
@@ -105,14 +106,12 @@ export default function TarifsPage() {
           Le tarif appliqué à une date précise s&apos;affiche en cliquant dessus.
           Pour réserver plusieurs espaces en même temps, ou sur une période plus
           longue, écrivez-nous directement sur WhatsApp au{" "}
-          <a
-            href="https://wa.me/33761471073"
-            target="_blank"
-            rel="noopener noreferrer"
+          <WhatsAppLink
+            location="tarifs_accueil"
             className="font-mono text-accent underline underline-offset-4 transition-colors hover:text-accent-hover"
           >
             +33 7 61 47 10 73
-          </a>
+          </WhatsAppLink>
           .
         </p>
       </main>

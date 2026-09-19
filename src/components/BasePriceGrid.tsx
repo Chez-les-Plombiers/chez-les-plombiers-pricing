@@ -1,6 +1,7 @@
 import { FileText, Info } from "lucide-react";
 import type { VenueConfig } from "@/lib/venues";
 import { formatPrice } from "@/lib/date-utils";
+import { WhatsAppLink } from "@/components/WhatsAppLink";
 
 // ISO 1=Lundi … 7=Dimanche.
 const DAYS: { iso: number; label: string }[] = [
@@ -14,7 +15,6 @@ const DAYS: { iso: number; label: string }[] = [
 ];
 
 const INFOS_URL = "https://www.chezlesplombiers.fr/infos";
-const WHATSAPP_URL = "https://wa.me/33761471073";
 
 interface BasePriceGridProps {
   venue: VenueConfig;
@@ -129,15 +129,13 @@ export function BasePriceGrid({ venue }: BasePriceGridProps) {
           <Info className="h-3 w-3" />
           Informations pratiques
         </a>
-        <a
-          href={WHATSAPP_URL}
-          target="_blank"
-          rel="noopener noreferrer"
+        <WhatsAppLink
+          location="grille_conditions"
           className="inline-flex items-center gap-1.5 border border-border px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wider text-muted transition-colors hover:border-accent hover:text-accent"
         >
           <FileText className="h-3 w-3" />
           Demander les conditions générales
-        </a>
+        </WhatsAppLink>
       </div>
     </section>
   );

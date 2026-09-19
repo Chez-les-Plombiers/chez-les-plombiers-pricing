@@ -9,6 +9,7 @@ import { Footer } from "@/components/Footer";
 import { VenueSelector } from "@/components/VenueSelector";
 import { CalendarHeatmap } from "@/components/CalendarHeatmap";
 import { BasePriceGrid } from "@/components/BasePriceGrid";
+import { WhatsAppLink } from "@/components/WhatsAppLink";
 
 export const dynamic = "force-dynamic";
 
@@ -144,14 +145,12 @@ export default async function VenuePage({
           <p className="hyphens-auto text-justify text-sm leading-relaxed text-muted">
             Si vous souhaitez réserver plusieurs espaces en même temps, ou sur une
             période plus longue, écrivez-nous directement sur WhatsApp au{" "}
-            <a
-              href="https://wa.me/33761471073"
-              target="_blank"
-              rel="noopener noreferrer"
+            <WhatsAppLink
+              location="tarifs_lieu"
               className="font-mono text-accent underline underline-offset-4 transition-colors hover:text-accent-hover"
             >
               +33 7 61 47 10 73
-            </a>
+            </WhatsAppLink>
             .
           </p>
         </div>
