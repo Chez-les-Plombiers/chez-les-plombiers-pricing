@@ -2,9 +2,14 @@ import type { NextConfig } from "next";
 
 // CSP : self + GA4 (googletagmanager/google-analytics) + Microsoft Clarity.
 // 'unsafe-inline' scripts : requis par les snippets GA/Clarity et Next sans infra nonce.
+// ⚠️ `https://*.clarity.ms` et non `https://www.clarity.ms` : le tag Clarity
+// n'est qu'un chargeur, il va ensuite chercher la vraie bibliothèque sur
+// `scripts.clarity.ms`. Restreindre à `www` bloquait ce second script — donc
+// Clarity ne collectait plus rien depuis le durcissement CSP du 26/08/2026,
+// sans la moindre alerte. Constaté et corrigé le 19/09/2026.
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.clarity.ms",
+  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://*.clarity.ms",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https://www.googletagmanager.com https://*.clarity.ms",
   "font-src 'self'",
