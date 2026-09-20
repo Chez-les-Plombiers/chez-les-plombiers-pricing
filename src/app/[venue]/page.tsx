@@ -125,7 +125,7 @@ export default async function VenuePage({
         )}
 
         <div className="order-4 mb-4">
-          <h1 className="font-mono text-xl font-bold uppercase tracking-widest text-foreground sm:text-2xl">
+          <h1 className="font-display text-xl font-bold uppercase tracking-[0.12em] text-foreground sm:text-2xl">
             {venue.name}
           </h1>
           <p className="mt-2 text-sm text-muted">

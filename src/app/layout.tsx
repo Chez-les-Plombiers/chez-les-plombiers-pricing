@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import { Inter, Space_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
 const inter = Inter({
@@ -12,6 +13,28 @@ const spaceMono = Space_Mono({
   variable: "--font-space-mono",
   weight: ["400", "700"],
   subsets: ["latin"],
+});
+
+/**
+ * Eurostile Extended — la police du logotype CHEZ LES PLOMBIERS.
+ *
+ * Réservée aux TITRES. Ces fichiers ne contiennent pas le signe € (vérifié :
+ * 353 glyphes, tous les accents français, pas l'euro) ; les montants restent
+ * donc en Space Mono, ce qui est de toute façon le bon partage — la police de
+ * marque pour dire, la mono pour chiffrer.
+ *
+ * ⚠️ Eurostile est sous licence Linotype. Les fichiers viennent du studio qui
+ * a fait l'identité, mais une licence d'usage WEB est distincte d'une licence
+ * bureautique. À confirmer auprès d'Étienne avant une mise en ligne publique
+ * durable.
+ */
+const eurostile = localFont({
+  variable: "--font-eurostile",
+  display: "swap",
+  src: [
+    { path: "../fonts/eurostile-extended.ttf", weight: "400", style: "normal" },
+    { path: "../fonts/eurostile-extended-bold.ttf", weight: "700", style: "normal" },
+  ],
 });
 
 /**
@@ -73,7 +96,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${inter.variable} ${spaceMono.variable} antialiased`}>
+      <body className={`${inter.variable} ${spaceMono.variable} ${eurostile.variable} antialiased`}>
         {children}
       </body>
     </html>

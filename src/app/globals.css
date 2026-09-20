@@ -20,6 +20,17 @@
 
   /* Dates sous option : orange, repris du code couleur Google Calendar. */
   --option: #F09300;
+
+  /*
+   * Papier — le niveau MARQUE, quand aucun lieu n'est choisi.
+   *
+   * Beige repris de la maquette du site : c'est la couleur neutre de CHEZ LES
+   * PLOMBIERS, avant que l'un des trois lieux ne prenne la main avec sa propre
+   * teinte (laiton, bleu, rose).
+   */
+  --paper: #F1EEE8;
+  --paper-ink: #1B1A17;
+  --paper-muted: #6F6960;
 }
 
 /*
@@ -77,8 +88,13 @@
   --color-tier-booked: var(--tier-booked);
   --color-venue: var(--venue);
   --color-option: var(--option);
+  --color-paper: var(--paper);
+  --color-paper-ink: var(--paper-ink);
+  --color-paper-muted: var(--paper-muted);
   --font-sans: var(--font-inter);
   --font-mono: var(--font-space-mono);
+  /* Police de marque, titres uniquement — elle n'a pas le signe €. */
+  --font-display: var(--font-eurostile);
 }
 
 body {
