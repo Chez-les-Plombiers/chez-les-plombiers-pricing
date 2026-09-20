@@ -57,7 +57,11 @@ export function VenueSelector({ current }: VenueSelectorProps) {
               <div className="flex items-start justify-between gap-3">
                 <h2
                   className={cn(
-                    "font-display text-sm font-bold uppercase tracking-[0.14em]",
+                    // Eurostile Extended est large et l'interlettrage l'élargit
+                    // encore : sur mobile, les deux cartes du bas font ~186 px
+                    // et « L'APPARTEMENT » se faisait couper. On resserre là,
+                    // on respire à partir de `sm`.
+                    "font-display text-[11px] font-bold uppercase leading-tight tracking-[0.06em] sm:text-sm sm:tracking-[0.14em]",
                     active ? "text-venue" : "text-foreground"
                   )}
                 >
