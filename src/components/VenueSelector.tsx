@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { listVenues, type VenueSlug } from "@/lib/venues";
+import { listVenues, DEFAULT_VENUE, type VenueSlug } from "@/lib/venues";
 import { formatPrice } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 
@@ -41,7 +41,8 @@ export function VenueSelector({ current }: VenueSelectorProps) {
         return (
           <Link
             key={venue.slug}
-            href={`/${venue.slug}`}
+            // L'ATELIER vit à la racine : viser /atelier ferait rebondir par une redirection.
+            href={venue.slug === DEFAULT_VENUE ? "/" : `/${venue.slug}`}
             data-venue-tab={venue.slug}
             aria-current={active ? "page" : undefined}
             className={cn(
