@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { getVenue, isVenueSlug, DEFAULT_VENUE, VENUE_ORDER } from "@/lib/venues";
 import { VenuePageBody } from "@/components/VenuePageBody";
 
@@ -47,7 +47,9 @@ export default async function VenuePage({
    * `/tarifs/atelier` reste valide et redirige, parce que le lien a pu être
    * communiqué depuis le 19/09.
    */
-  if (slug === DEFAULT_VENUE) redirect("/");
+  // `permanentRedirect` et non `redirect` : ce dernier renvoie un 307, que
+  // Google traite comme temporaire et qui ne consolide donc pas l'URL.
+  if (slug === DEFAULT_VENUE) permanentRedirect("/");
 
   return <VenuePageBody venue={getVenue(slug)} />;
 }
