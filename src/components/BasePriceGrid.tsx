@@ -119,6 +119,22 @@ export function BasePriceGrid({ venue }: BasePriceGridProps) {
         </div>
       </dl>
 
+      {/*
+        Descendue du haut de page le 20/09/2026 : en intro elle repoussait le
+        sélecteur, alors qu'elle ne sert qu'à qui a déjà lu les conditions.
+      */}
+      <p className="mt-3 border-t border-border pt-2 text-[11px] leading-relaxed text-muted">
+        Pour réserver plusieurs espaces en même temps, ou sur une période plus
+        longue, écrivez-nous directement sur WhatsApp au{" "}
+        <WhatsAppLink
+          location="grille_multi_lieux"
+          className="font-mono text-accent underline underline-offset-4 transition-colors hover:text-accent-hover"
+        >
+          +33 7 61 47 10 73
+        </WhatsAppLink>
+        .
+      </p>
+
       <div className="mt-3 flex flex-wrap gap-2 border-t border-border pt-3">
         <a
           href={INFOS_URL}
