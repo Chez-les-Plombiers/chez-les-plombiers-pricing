@@ -1,10 +1,15 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { listVenues } from "@/lib/venues";
+import { getVenue, listVenues, DEFAULT_VENUE } from "@/lib/venues";
+import { getVenueWindow } from "@/lib/venue-window";
+import { CalendarHeatmap } from "@/components/CalendarHeatmap";
+import { BasePriceGrid } from "@/components/BasePriceGrid";
 import { formatPrice } from "@/lib/date-utils";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { WhatsAppLink } from "@/components/WhatsAppLink";
+
+export const dynamic = "force-dynamic";
 
 /**
  * Page d'accueil du pricing, servie à `www.chezlesplombiers.fr/tarifs`.
@@ -33,8 +38,16 @@ function priceSummary(pricing: ReturnType<typeof listVenues>[number]["pricing"])
   };
 }
 
-export default function TarifsPage() {
+export default async function TarifsPage() {
   const venues = listVenues();
+
+  // Le calendrier de L'ATELIER, affiché directement sous les trois cartes.
+  // ⚠️ Avant le 19/09/2026, cette adresse redirigeait vers le calendrier ; la
+  // transformer en sommaire a donné l'impression que le pricing était cassé.
+  // Le sommaire reste — il est indexable et citable — mais on ne renvoie plus
+  // personne vers une page sans calendrier.
+  const principal = getVenue(DEFAULT_VENUE);
+  const { days, months } = await getVenueWindow(principal);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -101,7 +114,22 @@ export default function TarifsPage() {
           })}
         </div>
 
-        <p className="mt-6 max-w-3xl text-xs leading-relaxed text-muted">
+        <section className="mt-16 border-t border-border pt-10">
+          <h2 className="font-mono text-lg font-bold uppercase tracking-widest text-foreground">
+            {principal.name}
+          </h2>
+          <p className="mt-2 text-sm text-muted">
+            {principal.tagline} — cliquez sur un jour pour voir le tarif et
+            demander un devis. Les deux autres lieux ont leur propre calendrier.
+          </p>
+
+          <div className="mt-6">
+            <BasePriceGrid venue={principal} />
+          </div>
+          <CalendarHeatmap days={days} months={months} venue={principal} />
+        </section>
+
+        <p className="mt-10 max-w-3xl text-xs leading-relaxed text-muted">
           Les montants ci-dessus sont indicatifs et s&apos;entendent hors taxes.
           Le tarif appliqué à une date précise s&apos;affiche en cliquant dessus.
           Pour réserver plusieurs espaces en même temps, ou sur une période plus

@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { computeWindowPricing } from "@/lib/pricing-engine";
-import { getAllOverrides } from "@/lib/kv";
-import { getVenueAvailability } from "@/lib/google-calendar";
+import { getVenueWindow } from "@/lib/venue-window";
 import { getVenue, isVenueSlug, VENUE_ORDER } from "@/lib/venues";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -13,7 +11,6 @@ import { WhatsAppLink } from "@/components/WhatsAppLink";
 
 export const dynamic = "force-dynamic";
 
-const WINDOW_MONTHS = 12;
 
 export function generateStaticParams() {
   return VENUE_ORDER.map((venue) => ({ venue }));
@@ -54,47 +51,7 @@ export default async function VenuePage({
 
   const venue = getVenue(slug);
 
-  // Fenêtre glissante de 12 mois à partir du mois courant.
-  const now = new Date();
-  const startYear = now.getUTCFullYear();
-  const startMonth = now.getUTCMonth();
-
-  const months = Array.from({ length: WINDOW_MONTHS }, (_, i) => {
-    const absoluteMonth = startMonth + i;
-    return {
-      year: startYear + Math.floor(absoluteMonth / 12),
-      month: absoluteMonth % 12,
-    };
-  });
-
-  const coveredYears = [...new Set(months.map((m) => m.year))];
-
-  const [overrides, availability] = await Promise.all([
-    getAllOverrides(venue.slug),
-    getVenueAvailability(venue, coveredYears),
-  ]);
-
-  // Google Calendar est la source de vérité de la disponibilité : ses
-  // réservations écrasent les drapeaux saisis à la main dans l'admin.
-  for (const [date, booking] of Object.entries(availability.bookings)) {
-    const existing = overrides[date] || { date };
-    overrides[date] = {
-      ...existing,
-      date,
-      isBooked: booking.isBooked,
-      isBookedMorning: booking.isBookedMorning,
-      isBookedAfternoon: booking.isBookedAfternoon,
-    };
-  }
-
-  const days = computeWindowPricing({
-    venue,
-    startYear,
-    startMonth,
-    overrides,
-    options: availability.options,
-    monthCount: WINDOW_MONTHS,
-  });
+  const { days, months, availability } = await getVenueWindow(venue);
 
   return (
     <div data-venue={venue.slug} className="flex min-h-screen flex-col">
