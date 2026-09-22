@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { assetUrl } from "@/lib/base-path";
 
 /**
  * La barre du haut — la MÊME que celle du site, au pixel près.
@@ -52,7 +53,7 @@ export function Navbar() {
       <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-4 border border-border bg-card px-4 py-4 sm:px-5">
         <a href="/" aria-label="Chez les Plombiers, accueil" className="shrink-0">
           <Image
-            src="/logo.png"
+            src={assetUrl("/logo.png")}
             alt="Chez Les Plombiers"
             width={160}
             height={48}
