@@ -40,17 +40,33 @@ const WHATSAPP = "https://wa.me/33761471073";
 export function Navbar() {
   return (
     /*
-     * ⚠️ `w-full` SUR LE HEADER, ET `mx-auto` SUR LE DIV INTÉRIEUR.
+     * ── OÙ POSER LA LARGEUR MAXIMALE, ET POURQUOI ÇA SE VOIT ────────────────
      *
-     * La barre est un enfant direct d'un conteneur `flex flex-col`. En
-     * flexbox, une marge automatique sur l'axe transversal ANNULE
-     * l'étirement : l'élément se réduit à la largeur de son contenu et se
-     * centre. La barre sortait donc deux fois plus étroite que la page —
-     * Étienne : « tu l'as mis en microscopique ». Le site, lui, ne met pas sa
-     * barre dans un flex, d'où la différence.
+     * ⚠️ `max-w-[1180px]` VA SUR L'ENVELOPPE, PAS SUR LE CADRE VISIBLE.
+     *
+     * Étienne, 22/09/2026 : « c'est pas aligné encore là ». Il avait raison, et
+     * de 24 px exactement de chaque côté. La barre portait sa largeur maximale
+     * sur le DIV BORDÉ : 1180 px se comptaient donc jusqu'au trait. Le contenu
+     * de la page, lui, cape à 1180 px son enveloppe REMBOURRAGE COMPRIS, et
+     * n'affiche que 1132 px. Deux fois « 1180 », deux résultats différents.
+     *
+     * Invisible en dessous de ~1250 px — sous ce seuil aucun des deux
+     * n'atteint son plafond et tout s'aligne. Le défaut n'apparaît que sur les
+     * grands écrans, ce qui explique qu'il ait survécu à l'uniformisation.
+     *
+     * Structure désormais identique à `chrome.tsx` du site, au caractère près :
+     * enveloppe `max-w-[1180px] px-4 sm:px-6`, cadre à l'intérieur en pleine
+     * largeur. Si l'une des deux bouge, l'autre doit suivre.
+     *
+     * ⚠️ `w-full` RESTE INDISPENSABLE, et ce n'est pas une redondance. Cette
+     * barre est un enfant direct d'un `flex flex-col` — le site, lui, ne l'est
+     * pas. En flexbox, une marge automatique sur l'axe transversal ANNULE
+     * l'étirement : sans `w-full` pour donner une largeur de base, `mx-auto`
+     * réduirait la barre à la largeur de son contenu. C'est exactement ce qui
+     * s'était produit le 22/09 — Étienne : « tu l'as mis en microscopique ».
      */
-    <header className="w-full px-4 pt-5 sm:px-6">
-      <div className="mx-auto flex max-w-[1180px] items-center justify-between gap-4 border border-border bg-card px-4 py-4 sm:px-5">
+    <header className="mx-auto w-full max-w-[1180px] px-4 pt-5 sm:px-6">
+      <div className="flex items-center justify-between gap-4 border border-border bg-card px-4 py-4 sm:px-5">
         <a href="/" aria-label="Chez les Plombiers, accueil" className="shrink-0">
           <Image
             src={assetUrl("/logo.png")}
