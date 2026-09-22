@@ -133,7 +133,17 @@ export const VENUES: Record<VenueSlug, VenueConfig> = {
     slug: "boutique",
     name: "LA BOUTIQUE",
     shortName: "Boutique",
-    tagline: "40 m² — ouverte depuis septembre 2026",
+    /*
+     * ⚠️ NE PAS REMETTRE « OUVERTE DEPUIS SEPTEMBRE 2026 ». Retiré à la
+     * demande d'Étienne le 22/09/2026. Dire son âge à un lieu qui en a trois
+     * semaines ne le sert pas : le client cherche une surface et une vitrine,
+     * pas une date d'ouverture — et la mention le fait passer pour un essai.
+     *
+     * Le libellé retenu est celui qu'Étienne emploie déjà sur la tuile de
+     * l'accueil du site (`data.ts`), et il rétablit le motif des trois
+     * lignes : une surface, puis ce qui distingue le lieu.
+     */
+    tagline: "40 m² — vitrine sur rue",
     calendarValideId:
       "c_939acd3e992b2caf998e5c7d05bc4c3b1ccc470ec2e1ea2f0adeddc944afb8fe@group.calendar.google.com",
     calendarOptionId:
