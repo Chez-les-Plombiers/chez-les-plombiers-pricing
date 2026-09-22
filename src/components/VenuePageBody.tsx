@@ -20,7 +20,9 @@ export async function VenuePageBody({ venue }: { venue: VenueConfig }) {
   return (
     <div data-venue={venue.slug} className="flex min-h-screen flex-col">
       <Navbar />
-      /*
+      {/*
+       * ⚠️ ACCOLADES OBLIGATOIRES : sans elles, ce bloc n'est pas un
+       *   commentaire mais du TEXTE, et il s'affiche sur la page.
        * ⚠️ 1180 px, LA MÊME LARGEUR QUE LE SITE — pas `max-w-7xl` (1280 px).
        *
        * Étienne, 22/09/2026, les deux pages côte à côte : « la marge de la page
@@ -31,7 +33,7 @@ export async function VenuePageBody({ venue }: { venue: VenueConfig }) {
        *
        * ⚠️ Ne concerne QUE les pages publiques. L'administration et les tableaux de
        * bord gardent `max-w-7xl` : ce sont des outils, pas des pages qu'on lit.
-       */
+       */}
       <main className="mx-auto flex w-full max-w-[1180px] flex-1 flex-col px-4 py-8 sm:px-6">
         <div className="order-2">
           <VenueSelector current={venue.slug} />

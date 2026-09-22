@@ -21,7 +21,9 @@ export function VideoHero() {
       <div className="relative z-10 flex h-full flex-col">
         {/* Navbar */}
         <nav className="px-4 py-4 sm:px-6">
-          /*
+          {/*
+           * ⚠️ ACCOLADES OBLIGATOIRES : sans elles, ce bloc n'est pas un
+           *   commentaire mais du TEXTE, et il s'affiche sur la page.
            * ⚠️ 1180 px, LA MÊME LARGEUR QUE LE SITE — pas `max-w-7xl` (1280 px).
            *
            * Étienne, 22/09/2026, les deux pages côte à côte : « la marge de la page
@@ -32,7 +34,7 @@ export function VideoHero() {
            *
            * ⚠️ Ne concerne QUE les pages publiques. L'administration et les tableaux de
            * bord gardent `max-w-7xl` : ce sont des outils, pas des pages qu'on lit.
-           */
+           */}
           <div className="mx-auto flex max-w-[1180px] items-center justify-between">
             <Image
               src="/logo.png"
