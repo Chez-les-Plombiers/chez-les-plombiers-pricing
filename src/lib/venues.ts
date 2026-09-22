@@ -78,7 +78,7 @@ export interface VenueConfig {
   // ── Formulaire de devis ────────────────────────────────────────────────
   /**
    * Plafond du champ « nombre d'invités ».
-   * `null` = champ libre, non bloquant (cas de LA BOUTIQUE : 45 m², elle
+   * `null` = champ libre, non bloquant (cas de LA BOUTIQUE : 40 m², elle
    * n'est pas conçue pour recevoir, mais on n'empêche personne de demander).
    */
   maxGuests: number | null;
@@ -133,7 +133,7 @@ export const VENUES: Record<VenueSlug, VenueConfig> = {
     slug: "boutique",
     name: "LA BOUTIQUE",
     shortName: "Boutique",
-    tagline: "45 m² — ouverte depuis septembre 2026",
+    tagline: "40 m² — ouverte depuis septembre 2026",
     calendarValideId:
       "c_939acd3e992b2caf998e5c7d05bc4c3b1ccc470ec2e1ea2f0adeddc944afb8fe@group.calendar.google.com",
     calendarOptionId:
@@ -145,7 +145,7 @@ export const VENUES: Record<VenueSlug, VenueConfig> = {
     slots: ["journee-complete"],
     useTiers: false,
     maxGuests: null, // champ libre : le lieu n'est pas fait pour recevoir
-    capacityLabel: "45 m² — journée entière",
+    capacityLabel: "40 m² — journée entière",
     // Pas de caution sur LA BOUTIQUE (décision Étienne, 15/09/2026).
     deposit: null,
   },

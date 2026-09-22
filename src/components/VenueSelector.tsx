@@ -46,7 +46,7 @@ export function VenueSelector({ current }: VenueSelectorProps) {
             data-venue-tab={venue.slug}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "group flex flex-col justify-between gap-5 p-5 transition-colors",
+              "group flex flex-col justify-between gap-4 p-4 transition-colors sm:gap-5 sm:p-5",
               flagship && "col-span-2 sm:col-span-1",
               active
                 ? "bg-card"
@@ -74,22 +74,74 @@ export function VenueSelector({ current }: VenueSelectorProps) {
                   />
                 )}
               </div>
-              <p className="mt-1 text-[11px] leading-tight text-muted">
+              <p className="mt-1 text-[10px] leading-snug text-muted sm:text-[11px] sm:leading-tight">
                 {venue.tagline}
               </p>
 
-              <p className="mt-4 font-mono text-base font-bold text-foreground">
-                {valeur}
-                <span className="ml-1.5 text-[10px] font-normal text-muted">
+              {/*
+                ── LE PRIX, SUR UNE SEULE LIGNE ────────────────────────────
+                Étienne, 22/09/2026 : « les blocs sont vachement larges […]
+                1 000 €, 2 000 € pour l'appartement, ça pourrait être sur une
+                seule ligne. Là ça fait un peu cafouillis. »
+
+                Il avait raison, et la cause est arithmétique : les deux
+                cartes du bas font 186 px sur un écran de 375. Moins le
+                rembourrage, il reste ~150 px utiles — or « 1 000 € – 2 000 €
+                HT / jour » en demande 187 à la taille d'alors. La ligne se
+                cassait donc n'importe où : après « HT / », au milieu de la
+                fourchette. D'où trois lignes hautes et l'impression de bloc.
+
+                ⚠️ `whitespace-nowrap` SUR LA VALEUR, et c'est le point. Les
+                espaces d'une fourchette de prix ne sont pas des espaces
+                ordinaires : couper « 1 000 € – 2 000 € » en deux donne à lire
+                deux prix au lieu d'un intervalle. Mieux vaut déborder — ce
+                qui ne peut plus arriver — que se casser là.
+
+                ⚠️ « HT / jour » PASSE DESSOUS SUR MOBILE, en ligne à partir
+                de `sm`. C'est une précision, pas le prix : elle peut occuper
+                sa propre ligne quand la place manque, la fourchette non.
+
+                ⚠️ SAUF SUR LE VAISSEAU AMIRAL, qui est pleine largeur même
+                sur mobile : 309 px utiles pour 183 px de texte. Le descendre
+                là aurait été une règle appliquée sans regarder la place
+                disponible — et l'écart entre les trois cartes se serait vu.
+              */}
+              <p className="mt-3 font-mono text-[13px] font-bold leading-tight text-foreground sm:mt-4 sm:text-base">
+                <span className="whitespace-nowrap">{valeur}</span>
+                <span
+                  className={cn(
+                    "text-[10px] font-normal text-muted",
+                    flagship ? "ml-1.5" : "block sm:ml-1.5 sm:inline",
+                  )}
+                >
                   HT / jour
                 </span>
               </p>
-              <p className="mt-0.5 text-[11px] text-muted">{detail}</p>
+              <p className="mt-0.5 text-[10px] leading-snug text-muted sm:text-[11px]">
+                {detail}
+              </p>
             </div>
 
+            {/*
+              ⚠️ `whitespace-nowrap` + interlettrage resserré sur mobile.
+              « VOIR LE CALENDRIER » se cassait en deux dans la carte de
+              LA BOUTIQUE, la plus étroite des trois (137 px utiles). Mesuré :
+              la ligne en demandait exactement 137 — elle tenait au pixel, ce
+              qui n'est pas tenir. Le tracking resserré dégage ~7 px de jeu,
+              et l'appel à l'action retrouve une seule ligne. On respire à
+              partir de `sm`, où la place ne manque plus.
+
+              ⚠️ PAS DE `nowrap` SUR LA CARTE ACTIVE. Elle dit « Calendrier
+              affiché ci-dessous » — 174 px, soit bien plus que les 137 d'une
+              carte étroite. L'appliquer aux deux libellés aurait fait
+              déborder la carte de LA BOUTIQUE sur `/tarifs/boutique`, en
+              corrigeant un défaut par un autre. Celui-là a le droit de se
+              replier : c'est un état, pas une action.
+            */}
             <span
               className={cn(
-                "inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider transition-colors",
+                "inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-wide transition-colors sm:gap-1.5 sm:tracking-wider",
+                !active && "whitespace-nowrap",
                 active ? "text-muted" : "text-accent"
               )}
             >
