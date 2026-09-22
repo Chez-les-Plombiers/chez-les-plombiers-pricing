@@ -21,6 +21,16 @@ const csp = [
 ].join("; ");
 
 const nextConfig: NextConfig = {
+  /*
+   * ⚠️ MÊME RAISON QUE SUR LE SITE : l'optimiseur d'images de Vercel a
+   * atteint le plafond du plan Hobby le 22/09/2026 et renvoyait `402` sur
+   * TOUT le domaine, y compris le logo de cette barre. Voir la note dans
+   * `chez-les-plombiers/next.config.ts`.
+   *
+   * ⚠️ Les deux applications partagent le domaine ET le quota : l'une ne peut
+   * pas garder l'optimiseur pendant que l'autre le coupe.
+   */
+  images: { unoptimized: true },
   /**
    * Le pricing est servi sous `www.chezlesplombiers.fr/tarifs` (montage
    * multi-zones Next.js) : le site vitrine réécrit `/tarifs/*` vers ce
