@@ -100,7 +100,7 @@ export const VENUES: Record<VenueSlug, VenueConfig> = {
     slug: "atelier",
     name: "L'ATELIER",
     shortName: "Atelier",
-    tagline: "200 m² — jusqu'à 200 personnes",
+    tagline: "200 m² — jusqu'à 150 personnes",
     calendarValideId:
       "c_c1de52d8f5aa41e62bf0988bbb5112c46ee33d12449e22ad9d4d7099dc54a911@group.calendar.google.com",
     calendarOptionId:
@@ -139,8 +139,18 @@ export const VENUES: Record<VenueSlug, VenueConfig> = {
      * paliers, sur les trois lieux.
      */
     useTiers: false,
-    maxGuests: 200,
-    capacityLabel: "200 m² — jusqu'à 200 personnes",
+    /*
+     * ⚠️ 150, ET NON 200. Le calendrier annonçait 200 personnes pendant que
+     * le site en annonçait 150 partout — « 150 debout · 80 assis · 60 à
+     * table ». Étienne a tranché le 23/09/2026 : c'est 150. Le 200 venait
+     * vraisemblablement de la surface, 200 m², recopiée dans le mauvais champ.
+     *
+     * ⚠️ Ce chiffre n'est pas décoratif : il plafonne le champ « nombre
+     * d'invités » du formulaire de devis. À 200, on acceptait une demande
+     * pour un événement que le lieu ne peut pas tenir.
+     */
+    maxGuests: 150,
+    capacityLabel: "200 m² — jusqu'à 150 personnes",
     deposit: 5000,
   },
 

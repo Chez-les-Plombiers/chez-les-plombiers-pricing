@@ -1,4 +1,5 @@
 import type { PennylaneMonthData } from "@/types";
+import { getInvoiceNatures, setInvoiceNatures, type InvoiceNature } from "@/lib/kv";
 
 const API_BASE = "https://app.pennylane.com/api/external/v2";
 
@@ -9,6 +10,8 @@ interface RawPennylaneInvoice {
   status: string;
   paid: boolean;
   currency_amount_before_tax: string | null;
+  /** TVA de la facture. Un depot de garantie n'y est jamais soumis. */
+  currency_tax: string | null;
   amount: string | null;
   label: string;
   invoice_number: string;
@@ -73,6 +76,77 @@ async function fetchPage(cursor?: string): Promise<PennylaneResponse> {
 }
 
 /**
+ * Lignes d'article d'une facture.
+ *
+ * ⚠️ `invoice_lines` n'est pas inclus dans la reponse de la liste : c'est une
+ * sous-ressource qu'il faut aller chercher. On ne le fait que pour les
+ * factures sans TVA, et le resultat est mis en cache — la nature d'une facture
+ * emise ne change plus.
+ */
+async function fetchInvoiceLines(invoiceId: number): Promise<string> {
+  try {
+    const res = await fetch(`${API_BASE}/customer_invoices/${invoiceId}/invoice_lines`, {
+      headers: { Authorization: `Bearer ${getApiKey()}`, Accept: "application/json" },
+      cache: "no-store",
+    });
+    if (!res.ok) return "";
+    const data = await res.json();
+    return (data.items ?? [])
+      .map((l: { label?: string; description?: string }) =>
+        `${l.label ?? ""} ${l.description ?? ""}`)
+      .join(" ");
+  } catch {
+    return "";
+  }
+}
+
+const DEPOT = /d[ée]p[oô]t\s+de\s+garantie|caution/i;
+const LOCATION = /location|mise\s+[aà]\s+dispo|forfait|prestation|m[ée]nage|s[ée]curit[ée]|r[ée]gie|manutention/i;
+
+/**
+ * Une facture est-elle du chiffre d'affaires, ou un depot de garantie ?
+ *
+ * ⚠️ REGLE ETABLIE LE 14/09/2026, APRES ERREUR. Ne pas la simplifier.
+ *
+ * Quatre discriminants ont ete essayes et ont tous echoue :
+ *   - le MONTANT (5 000 / 3 000 €) : des locations tombent sur ces ronds ;
+ *   - le MOT-CLE dans le libelle : Pennylane genere des libelles automatiques
+ *     (« Facture SNAPEVENT - F-2026-09-17-114 ») ou le mot « caution »
+ *     n'apparait pas. C'est ce filtre qui faisait entrer 16 000 € de cautions
+ *     dans le CA de septembre 2026 ;
+ *   - la TVA NULLE seule : une location exoneree (client etranger) a la meme
+ *     signature qu'une caution ;
+ *   - l'OBJET de la facture : une location et sa caution portent LE MEME, car
+ *     il decrit l'evenement et non la piece.
+ *
+ * Seule la LIGNE D'ARTICLE fait preuve. La TVA sert de filtre prealable : un
+ * depot de garantie n'y est jamais soumis, donc TVA presente ⇒ chiffre
+ * d'affaires, sans appel supplementaire.
+ */
+async function natureDeLaFacture(
+  inv: RawPennylaneInvoice,
+  cache: Record<number, InvoiceNature>
+): Promise<InvoiceNature> {
+  if (cache[inv.id]) return cache[inv.id];
+
+  const tva = parseFloat(inv.currency_tax || "0");
+  if (Math.abs(tva) >= 0.01) {
+    cache[inv.id] = "revenue";
+    return "revenue";
+  }
+
+  const lignes = await fetchInvoiceLines(inv.id);
+  let nature: InvoiceNature;
+  if (DEPOT.test(lignes)) nature = "deposit";
+  else if (LOCATION.test(lignes)) nature = "revenue";
+  else if (DEPOT.test(`${inv.label} ${inv.pdf_invoice_subject}`)) nature = "deposit";
+  else nature = "revenue"; // a defaut, on garde la facture : mieux vaut un CA
+                           // a verifier qu'un CA silencieusement ampute.
+  cache[inv.id] = nature;
+  return nature;
+}
+
+/**
  * Extract a clean client name from the Pennylane label.
  * "Facture JACKY PRODUCTION - F-2026-04-19-36 (label généré)" → "JACKY PRODUCTION"
  */
@@ -103,15 +177,22 @@ export async function getPennylaneData(
     pages++;
   } while (cursor && pages < 20);
 
-  // Filter to year, skip cancelled/archived/incomplete, skip cautions
-  const active = all.filter((inv) => {
-    if (!inv.date || !inv.date.startsWith(`${year}-`)) return false;
-    if (["cancelled", "archived", "incomplete"].includes(inv.status)) return false;
-    // Exclude caution / dépôt de garantie (not revenue)
-    const labelLower = (inv.label + " " + inv.pdf_invoice_subject).toLowerCase();
-    if (labelLower.includes("caution") || labelLower.includes("dépôt de garantie") || labelLower.includes("depot de garantie")) return false;
-    return true;
-  });
+  // Annee + statut : le reste se decide sur la nature de la piece.
+  const duMillesime = all.filter(
+    (inv) =>
+      inv.date?.startsWith(`${year}-`) &&
+      !["cancelled", "archived", "incomplete"].includes(inv.status)
+  );
+
+  // Les depots de garantie ne sont pas du produit : ils sont dus au client.
+  const cache = await getInvoiceNatures();
+  const avant = JSON.stringify(cache);
+  const natures = await Promise.all(
+    duMillesime.map((inv) => natureDeLaFacture(inv, cache))
+  );
+  if (JSON.stringify(cache) !== avant) await setInvoiceNatures(cache);
+
+  const active = duMillesime.filter((_, i) => natures[i] === "revenue");
 
   // Build clean invoice list
   const invoices: InvoiceItem[] = active.map((inv) => {

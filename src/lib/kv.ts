@@ -130,6 +130,30 @@ export async function setInvoiceOverride(
   return overrides;
 }
 
+// --- Invoice natures (cache) ---
+// La nature d'une facture ne change jamais une fois emise : on la determine
+// une seule fois, puis on la garde. Sans ce cache il faudrait relire les
+// lignes d'article de chaque facture sans TVA a chaque chargement du tableau
+// de bord — plus de la moitie d'entre elles.
+
+const INVOICE_NATURES_KEY = "finances:invoice-natures";
+
+export type InvoiceNature = "revenue" | "deposit";
+
+export async function getInvoiceNatures(): Promise<Record<number, InvoiceNature>> {
+  const redis = getRedis();
+  if (!redis) return {};
+  const data = await redis.get<Record<number, InvoiceNature>>(INVOICE_NATURES_KEY);
+  return data || {};
+}
+
+export async function setInvoiceNatures(
+  natures: Record<number, InvoiceNature>
+): Promise<void> {
+  const redis = getRedis();
+  if (redis) await redis.set(INVOICE_NATURES_KEY, natures);
+}
+
 // --- Finances ---
 
 const FINANCES_KEY = (year: number) => `finances:${year}`;
