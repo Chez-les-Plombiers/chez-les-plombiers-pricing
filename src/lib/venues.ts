@@ -122,7 +122,23 @@ export const VENUES: Record<VenueSlug, VenueConfig> = {
     // l'après-midi) est actée mais fera l'objet d'un lot séparé.
     slots: ["matinee", "apres-midi", "journee-complete"],
     halfDayRatio: 0.6,
-    useTiers: true,
+    /*
+     * ⚠️ LES PALIERS DE COULEUR SONT ÉTEINTS DEPUIS LE 23/09/2026. Étienne :
+     * « il faut juste laisser les couleurs de Fashion Week, mais enlever le
+     * bleu et le jaune — une seule couleur, comme quoi c'est un jour normal ».
+     *
+     * Ce n'est pas un revirement caché : le 15/09 il avait dit l'inverse
+     * (« c'est plus joli avec plus de couleurs »). Il a changé d'avis en
+     * voyant le calendrier vivre.
+     *
+     * ⚠️ Le prix par jour de semaine reste lisible : `BasePriceGrid` l'affiche
+     * en chiffres au-dessus du calendrier. Le palier ne faisait que le
+     * suggérer par une teinte.
+     *
+     * La Fashion Week garde sa couleur — elle est traitée à part, hors des
+     * paliers, sur les trois lieux.
+     */
+    useTiers: false,
     maxGuests: 200,
     capacityLabel: "200 m² — jusqu'à 200 personnes",
     deposit: 5000,

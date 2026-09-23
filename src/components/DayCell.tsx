@@ -42,6 +42,21 @@ export function DayCell({ day, today, venue, onClick }: DayCellProps) {
   const hasOption = day.isOption || day.isOptionMorning || day.isOptionAfternoon;
   const isFashionWeek = day.tier === "fashion-week";
 
+  /*
+   * La couleur de palier ne s'applique qu'aux lieux qui en ont — et la Fashion
+   * Week la porte toujours, sur les trois lieux : c'est la seule période où le
+   * prix change vraiment.
+   */
+  const couleurPalier = venue.useTiers || isFashionWeek;
+  const fond = (reserve: boolean) =>
+    reserve
+      ? "bg-tier-booked/80"
+      : couleurPalier
+        ? "opacity-20 group-hover:opacity-30"
+        : "bg-surface";
+  const styleFond = (reserve: boolean) =>
+    !reserve && couleurPalier ? { backgroundColor: tier.color } : undefined;
+
   const label = [
     `${dayNum}`,
     isPast ? "passé" : null,
@@ -75,50 +90,45 @@ export function DayCell({ day, today, venue, onClick }: DayCellProps) {
           : "cursor-pointer border-transparent hover:border-accent"
       )}
     >
-      {/* Fond : paliers de demande (ATELIER) ou surface neutre (autres lieux) */}
+      {/*
+        ── LE FOND D'UNE CASE ──────────────────────────────────────────────
+
+        Deux questions indépendantes, et elles étaient MAL liées :
+
+          1. la case porte-t-elle une couleur de palier ? → `couleurPalier`
+          2. se coupe-t-elle en deux demi-journées ?      → `multiSlot`
+
+        ⚠️ LE DÉCOUPAGE ÉTAIT CONDITIONNÉ À `venue.useTiers`. Les deux n'ont
+        rien à voir : `multiSlot` teste déjà si le lieu vend des demi-journées.
+        Tant que L'ATELIER était le seul à avoir les deux, le défaut dormait —
+        mais éteindre ses paliers aurait emporté le découpage avec eux, et une
+        MATINÉE RÉSERVÉE SE SERAIT AFFICHÉE COMME UN JOUR LIBRE. Une erreur de
+        réservation, pas une coquille. C'est la seule chose qui rendait la
+        demande d'Étienne du 23/09/2026 risquée ; elle ne l'est plus.
+
+        ⚠️ Éteindre les couleurs ne perd AUCUNE information de prix : la
+        grille par jour de semaine reste affichée au-dessus du calendrier
+        (`BasePriceGrid`). Le palier disait « ce jour coûte plus cher » ; la
+        grille le dit en chiffres, ce qui est plus clair.
+      */}
       {!isDisabled && (
         <>
-          {venue.useTiers && multiSlot && !isFashionWeek ? (
+          {multiSlot && !isFashionWeek ? (
             <>
               <div
-                className={cn(
-                  "absolute inset-y-0 left-0 w-1/2 transition-opacity",
-                  day.isBookedMorning
-                    ? "bg-tier-booked/80"
-                    : "opacity-20 group-hover:opacity-30"
-                )}
-                style={
-                  !day.isBookedMorning ? { backgroundColor: tier.color } : undefined
-                }
+                className={cn("absolute inset-y-0 left-0 w-1/2 transition-opacity", fond(day.isBookedMorning))}
+                style={styleFond(day.isBookedMorning)}
               />
               <div
-                className={cn(
-                  "absolute inset-y-0 right-0 w-1/2 transition-opacity",
-                  day.isBookedAfternoon
-                    ? "bg-tier-booked/80"
-                    : "opacity-20 group-hover:opacity-30"
-                )}
-                style={
-                  !day.isBookedAfternoon
-                    ? { backgroundColor: tier.color }
-                    : undefined
-                }
+                className={cn("absolute inset-y-0 right-0 w-1/2 transition-opacity", fond(day.isBookedAfternoon))}
+                style={styleFond(day.isBookedAfternoon)}
               />
               <div className="absolute inset-y-1 left-1/2 w-px bg-background/20" />
             </>
           ) : (
             <div
-              className={cn(
-                "absolute inset-0 transition-opacity",
-                venue.useTiers || isFashionWeek
-                  ? "opacity-20 group-hover:opacity-30"
-                  : "bg-surface"
-              )}
-              style={
-                venue.useTiers || isFashionWeek
-                  ? { backgroundColor: tier.color }
-                  : undefined
-              }
+              className={cn("absolute inset-0 transition-opacity", fond(false))}
+              style={styleFond(false)}
             />
           )}
         </>
