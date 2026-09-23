@@ -306,3 +306,43 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Dashboard Finances — les cautions ne sont pas du chiffre d'affaires (23/09/2026)
+
+`src/lib/pennylane.ts` décide si une facture Pennylane est du **produit** ou un
+**dépôt de garantie**. La règle vient du référentiel financier
+(`DIGITAL CLP/clp-finance/`), où elle a été établie après erreur le 14/09/2026.
+
+**Ne pas la simplifier.** Quatre discriminants ont été essayés et ont tous échoué :
+
+| Discriminant | Pourquoi il échoue |
+|---|---|
+| le **montant** (5 000 / 3 000 €) | des locations tombent sur ces ronds |
+| le **mot-clé** dans le libellé | Pennylane génère « Facture SNAPEVENT - F-2026-09-17-114 » : le mot « caution » n'y est pas |
+| la **TVA nulle** seule | une location exonérée (client étranger) a la même signature |
+| l'**objet** de la facture | une location et sa caution portent le même — il décrit l'évènement |
+
+> **Seule la ligne d'article fait preuve.** La TVA sert de filtre préalable : un dépôt
+> de garantie n'y est jamais soumis, donc TVA présente ⇒ produit, sans appel
+> supplémentaire. TVA nulle ⇒ on va lire `/customer_invoices/{id}/invoice_lines`.
+
+C'est le filtre par mot-clé qui faisait entrer **16 000 € de cautions** dans le CA de
+septembre 2026, et surévaluait le total 2026 d'autant.
+
+⚠️ **Le défaut par défaut est de GARDER la facture en CA** si la ligne d'article est
+illisible. Mieux vaut un chiffre à vérifier qu'un chiffre silencieusement amputé.
+
+**Cache** : 54 % des factures 2026 sont à TVA nulle — les relire à chaque affichage
+serait lourd. La nature est donc mise en cache dans KV (`finances:invoice-natures`),
+définitivement : une facture émise ne change plus de nature. Purger cette clé force un
+recalcul complet.
+
+### Restent faux dans ce dashboard
+- **« Crédit travaux 5 833 €/mois »** compté comme une charge : c'est un remboursement
+  de dette, **seuls les intérêts sont une charge**. La ligne « résultat » est donc un
+  flux de trésorerie, pas un résultat comptable. (Les deux prêts CIC font d'ailleurs
+  5 322,76 €/mois, pas 5 833 €.)
+- **Un seul loyer de 5 000 €** alors que la marque exploite trois lieux.
+- **Aucun coût salarial** : Céline est portée par Archibald & Abraham. À intégrer le
+  jour où ce ne sera plus le cas.
+
