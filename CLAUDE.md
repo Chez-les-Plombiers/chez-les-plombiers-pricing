@@ -226,6 +226,57 @@ Les jours antérieurs à aujourd'hui sont grisés et non cliquables sur le calen
 - Journée complète réservée = cellule disabled `bg-tier-booked/40`
 - La disponibilité est déterminée par Google Calendar (source of truth)
 
+## L'administration — structure (refonte du 26/09/2026)
+
+### L'adresse : `chezlesplombiers.fr/admin`, à la racine
+⚠️ **Seule la PAGE remonte d'un cran.** L'application déclare `basePath: "/tarifs"`, donc
+ses assets (`/tarifs/_next/*`) et ses API (`/tarifs/api/*`) passent toujours par la
+réécriture `/tarifs/*`. Deux réécritures cohabitent dans `chez-les-plombiers/next.config.ts`
+(`beforeFiles`), et `src/proxy.ts` du site vitrine doit laisser sortir `/admin` **avant** sa
+règle de langue — sinon le chemin part en `/fr/admin` et n'atteint jamais la réécriture.
+Supprimer les lignes `/tarifs/*` laisserait `/admin` **sans JavaScript**.
+
+⚠️ **Le menu utilise des `<a>` nus, jamais `next/link`** : le routeur client de la zone croit
+vivre sous `/tarifs` et réécrirait la barre d'adresse en `/tarifs/admin/…`, faisant
+ressortir le préfixe qu'on vient d'enlever. Prix à payer : un rechargement par onglet.
+
+`/tarifs/admin` répond toujours — les deux adresses mènent au même endroit.
+
+### Les pages
+| Route | Contenu |
+|---|---|
+| `/admin` | **Finances** — c'est la page d'atterrissage, plus le calendrier |
+| `/admin/analytics` | panneau Analytics, avec son propre sélecteur de lieu |
+| `/admin/devis` | demandes de devis |
+| `/admin/projections` | scénarios |
+| `/admin/calendrier` | calendrier tarifaire — **absent du menu, délibérément** |
+| `/admin/finances` | redirection vers `/admin` (anciens signets) |
+
+⚠️ **`AdminShell` porte la connexion, le menu et la déconnexion** pour toutes les pages.
+Chacune refaisait sa propre lecture du jeton et son propre bouton de sortie, et la
+navigation vivait dans une barre d'outils **à l'intérieur du calendrier** — atteindre les
+devis supposait donc de passer par une page qu'on ne veut plus voir.
+
+⚠️ **Le render prop ne traverse pas la frontière serveur/client** : chaque page est un
+`page.tsx` serveur (métadonnées) qui délègue à un `client.tsx`. Passer `children` en
+fonction depuis un composant serveur casse le build au prérendu, pas à la compilation.
+
+⚠️ **LE CALENDRIER N'EST PAS SUPPRIMÉ, IL EST DÉLIÉ.** Étienne règle les prix en
+conversation et ne veut plus y atterrir. Mais c'est la **seule interface** vers
+`pricing:overrides`, qui porte plusieurs centaines de décisions tarifaires accumulées
+depuis 2026. On a retiré le lien, pas le code.
+
+⚠️ **Analytics et Devis vivaient DANS le calendrier**, en tiroirs derrière des boutons.
+Retirer le calendrier les aurait emportés — ils ont été extraits en composants
+(`AdminAnalytics`, `AdminDevis`). Le sélecteur de lieu reste dans Analytics, et seulement
+là : les chiffres y diffèrent réellement d'un lieu à l'autre.
+
+### Le bandeau d'anomalies
+Les factures signalées par `pennylane.ts` remontent **en haut de la page Finances**, avec
+leur montant et leur mois. Elles ne vivaient que dans le tiroir du mois concerné, c'est-à-dire
+derrière deux clics et à condition de savoir chercher — Étienne : « il faut quand même que ça
+nous alerte sur le truc à corriger ». Une anomalie qu'il faut aller chercher n'alerte personne.
+
 ## Authentification de l'administration (26/09/2026)
 
 ### Ce qu'il y avait avant, et pourquoi on en est sorti

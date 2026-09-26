@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { AdminProjectionsClient } from "./client";
+import { AdminAnalyticsClient } from "./client";
 
 export const metadata: Metadata = {
-  title: "Projections 2026 — Chez Les Plombiers",
+  title: "Analytics — Chez Les Plombiers",
   robots: { index: false, follow: false },
 };
 
 export default function Page() {
-  return <AdminProjectionsClient />;
+  return <AdminAnalyticsClient />;
 }

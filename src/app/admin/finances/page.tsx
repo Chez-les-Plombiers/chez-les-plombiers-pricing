@@ -1,11 +1,6 @@
-import type { Metadata } from "next";
-import { FinancesDashboard } from "@/components/FinancesDashboard";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Finances — Chez Les Plombiers",
-  robots: { index: false, follow: false },
-};
-
-export default function FinancesPage() {
-  return <FinancesDashboard />;
+/** Les finances sont passees a la racine de l'administration le 26/09/2026. */
+export default function FinancesRedirect() {
+  redirect("/admin");
 }

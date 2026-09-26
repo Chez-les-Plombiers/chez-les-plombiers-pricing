@@ -1,10 +1,6 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { AdminLogin } from "./AdminLogin";
-import { Navbar } from "./Navbar";
 import { ProjectionSliders } from "./ProjectionSliders";
 import { ProjectionChart } from "./ProjectionChart";
 import { ScenarioCard } from "./ScenarioCard";
@@ -28,19 +24,9 @@ function deepEqual(a: ScenarioParams, b: ScenarioParams): boolean {
   });
 }
 
+// La connexion et le menu sont portes par `AdminShell` depuis le 26/09/2026 :
+// cette page ne s'occupe plus que de ses projections.
 export function ProjectionDashboard() {
-  const [token, setToken] = useState<string | null>(() => {
-    if (typeof window !== "undefined") {
-      return sessionStorage.getItem("admin-token");
-    }
-    return null;
-  });
-
-  function handleLogin(t: string) {
-    sessionStorage.setItem("admin-token", t);
-    setToken(t);
-  }
-
   const [customParams, setCustomParams] = useState<ScenarioParams>({
     ...PRESET_REALISTE,
     name: "Personnalisé",
@@ -70,35 +56,8 @@ export function ProjectionDashboard() {
     return base;
   }, [pessimiste, realiste, optimiste, custom]);
 
-  if (!token) {
-    return (
-      <div className="flex min-h-screen flex-col">
-        <Navbar />
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6">
-          <AdminLogin onLogin={handleLogin} />
-        </main>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex min-h-screen flex-col">
-      <Navbar />
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6">
-        {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <h1 className="font-mono text-xl font-bold uppercase tracking-widest text-foreground">
-            Projections Financières 2026
-          </h1>
-          <Link
-            href="/admin"
-            className="flex items-center gap-2 border border-border px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-muted transition-colors hover:border-accent hover:text-accent"
-          >
-            <ArrowLeft className="h-3 w-3" />
-            Admin
-          </Link>
-        </div>
-
+    <>
         {/* Desktop: sidebar + chart. Mobile: stacked */}
         <div className="flex flex-col gap-6 lg:flex-row">
           {/* Sliders sidebar */}
@@ -129,7 +88,6 @@ export function ProjectionDashboard() {
           <ScenarioCard summary={optimiste} />
           {custom && <ScenarioCard summary={custom} />}
         </div>
-      </main>
-    </div>
+    </>
   );
 }

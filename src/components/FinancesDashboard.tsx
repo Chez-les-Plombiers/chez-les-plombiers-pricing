@@ -2,9 +2,7 @@
 import { apiUrl } from "@/lib/base-path";
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import Link from "next/link";
 import {
-  ArrowLeft,
   RefreshCw,
   Download,
   RotateCcw,
@@ -14,9 +12,6 @@ import {
   TrendingDown,
   Settings2,
 } from "lucide-react";
-import { AdminLogin } from "./AdminLogin";
-import { deconnexion } from "@/lib/deconnexion";
-import { Navbar } from "./Navbar";
 import { CumulativeChart, calculateBreakEvenMonth } from "./CumulativeChart";
 import type { CumulativeMonthData } from "./CumulativeChart";
 import type {
@@ -138,30 +133,20 @@ function toCumulativeMonths(data: FinanceMonthWithPennylane[]): CumulativeMonthD
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
-export function FinancesDashboard() {
-  const [token, setToken] = useState<string | null>(() => {
-    if (typeof window !== "undefined")
-      return sessionStorage.getItem("admin-token");
-    return null;
-  });
-
-  function handleLogin(t: string) {
-    sessionStorage.setItem("admin-token", t);
-    setToken(t);
-  }
-
-  if (!token) {
-    return (
-      <div className="flex min-h-screen flex-col">
-        <Navbar />
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6">
-          <AdminLogin onLogin={handleLogin} />
-        </main>
-      </div>
-    );
-  }
-
-  return <FinancesContent token={token} setToken={setToken} />;
+/**
+ * La connexion, la barre du site et le menu sont portes par `AdminShell`
+ * depuis le 26/09/2026. `onExpire` sert au seul cas ou le serveur repond 401
+ * en cours de route — session perimee : on remonte au parent, qui rend
+ * l'ecran de connexion.
+ */
+export function FinancesDashboard({
+  token,
+  onExpire,
+}: {
+  token: string;
+  onExpire: () => void;
+}) {
+  return <FinancesContent token={token} setToken={onExpire} />;
 }
 
 // ─── Inner Content ──────────────────────────────────────────────────────────
@@ -171,7 +156,7 @@ function FinancesContent({
   setToken,
 }: {
   token: string;
-  setToken: (t: string | null) => void;
+  setToken: () => void;
 }) {
   const [year, setYear] = useState(2026);
   const [period, setPeriod] = useState<PeriodFilter>("all");
@@ -188,7 +173,7 @@ function FinancesContent({
         headers: { Authorization: token },
       });
       if (res.status === 401) {
-        setToken(null);
+        setToken();
         return;
       }
       if (!res.ok) throw new Error("fetch error");
@@ -296,6 +281,23 @@ function FinancesContent({
     return data.filter((m) => activeMonths.includes(m.month));
   }, [data, activeMonths]);
 
+  /**
+   * Les anomalies de l'annee, remontees EN HAUT DE PAGE.
+   *
+   * ⚠️ Elles ne vivaient que dans le tiroir du mois concerne, c'est-a-dire
+   * derriere deux clics et a condition de savoir ou chercher. Etienne,
+   * 26/09/2026 : « il faut quand meme que ca nous alerte sur le truc a
+   * corriger ». Une anomalie qu'il faut aller chercher n'alerte personne.
+   */
+  const anomalies = useMemo(() => {
+    if (!data) return [];
+    return data.flatMap((m) =>
+      m.invoices
+        .filter((i) => i.alerte)
+        .map((i) => ({ ...i, mois: m.month }))
+    );
+  }, [data]);
+
   const summaryCards = useMemo(() => {
     if (!filteredData) return null;
     const totalEncaisse = filteredData.reduce(
@@ -312,86 +314,91 @@ function FinancesContent({
 
   if (loading || !data) {
     return (
-      <div className="flex min-h-screen flex-col">
-        <Navbar />
-        <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6">
-          <div className="flex items-center justify-center py-32">
-            <RefreshCw className="h-6 w-6 animate-spin text-muted" />
-          </div>
-        </main>
+      <div className="flex items-center justify-center py-32">
+        <RefreshCw className="h-6 w-6 animate-spin text-muted" />
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <Navbar />
-      <main className="mx-auto w-full max-w-[1300px] flex-1 px-4 py-8 sm:px-8">
-        {/* Header */}
-        <div className="mb-1 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="font-mono text-xl font-bold uppercase tracking-widest text-foreground">
-              Finances
-            </h1>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => { setYear((y) => y - 1); setLoading(true); }}
-                className="p-1 text-muted transition-colors hover:text-foreground"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <span className="min-w-[50px] text-center font-mono text-xl font-bold text-accent">
-                {year}
-              </span>
-              <button
-                onClick={() => { setYear((y) => y + 1); setLoading(true); }}
-                className="p-1 text-muted transition-colors hover:text-foreground"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/admin"
-              className="flex items-center gap-2 border border-border px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-muted transition-colors hover:border-accent hover:text-accent"
-            >
-              <ArrowLeft className="h-3 w-3" />
-              Admin
-            </Link>
+    <>
+      {/* Header */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => { setYear((y) => y - 1); setLoading(true); }}
+            className="p-1 text-muted transition-colors hover:text-foreground"
+            aria-label="Année précédente"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <span className="min-w-[50px] text-center font-mono text-xl font-bold text-accent">
+            {year}
+          </span>
+          <button
+            onClick={() => { setYear((y) => y + 1); setLoading(true); }}
+            className="p-1 text-muted transition-colors hover:text-foreground"
+            aria-label="Année suivante"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+        {/* Les filtres de periode passent a la ligne au telephone plutot que
+            de comprimer le selecteur d'annee jusqu'a l'illisible. */}
+        <div className="flex flex-wrap items-center gap-1">
+          {PERIOD_FILTERS.map((f) => (
             <button
-              onClick={() => {
-                deconnexion(token);
-                sessionStorage.removeItem("admin-token");
-                setToken(null);
-              }}
-              className="border border-border px-3 py-1.5 font-mono text-[10px] uppercase tracking-wider text-muted transition-colors hover:border-[#d95f5f] hover:text-[#d95f5f]"
+              key={f.key}
+              onClick={() => setPeriod(f.key)}
+              className={`px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors ${
+                period === f.key
+                  ? "bg-foreground text-background"
+                  : "text-muted hover:text-foreground"
+              }`}
             >
-              Déconnexion
+              {f.label}
             </button>
-          </div>
+          ))}
         </div>
-        <div className="mb-7 flex items-center justify-between">
-          <p className="text-xs text-muted">
-            Suivi mensuel — CA Pennylane encaissé, attribué au mois du paiement,
-            hors dépôts de garantie. Base caisse, en HT.
-          </p>
-          <div className="flex items-center gap-1">
-            {PERIOD_FILTERS.map((f) => (
-              <button
-                key={f.key}
-                onClick={() => setPeriod(f.key)}
-                className={`px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider transition-colors ${
-                  period === f.key
-                    ? "bg-foreground text-background"
-                    : "text-muted hover:text-foreground"
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
+      </div>
+      <p className="mb-6 text-xs text-muted">
+        Suivi mensuel — CA Pennylane encaissé, attribué au mois du paiement,
+        hors dépôts de garantie. Base caisse, en HT.
+      </p>
+
+        {anomalies.length > 0 && (
+          <div className="mb-6 border border-[#c9a84c] bg-[rgba(201,168,76,0.07)] p-4">
+            <div className="mb-2 flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-[#c9a84c]" />
+              <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-[#c9a84c]">
+                {anomalies.length} facture{anomalies.length > 1 ? "s" : ""} à vérifier dans Pennylane
+                {" — "}
+                {formatEur(anomalies.reduce((s, a) => s + a.amountHT, 0))} HT concernés
+              </span>
+            </div>
+            <ul className="space-y-1">
+              {anomalies.map((a) => (
+                <li key={a.id} className="text-[11px] leading-relaxed text-muted">
+                  <span className="font-mono text-foreground">
+                    {MONTH_SHORT[a.mois - 1]}
+                  </span>{" "}
+                  ·{" "}
+                  <span className="font-mono font-bold text-foreground">
+                    {a.invoiceNumber || "sans numéro"}
+                  </span>{" "}
+                  <span className="text-foreground">{a.clientName}</span>{" "}
+                  <span className="font-mono">{formatEur(a.amountHT)}</span> — {a.alerte}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-[11px] leading-relaxed text-muted">
+              Tant qu&apos;elles ne sont pas corrigées, ces factures sont comptées au mois
+              de leur <strong className="text-foreground">facture</strong>, pas de leur
+              paiement. L&apos;anomalie disparaîtra d&apos;elle-même une fois Pennylane à
+              jour — rien n&apos;est figé ici.
+            </p>
           </div>
-        </div>
+        )}
 
         {/* Summary Cards */}
         {summaryCards && (
@@ -563,8 +570,7 @@ function FinancesContent({
             onSaved={fetchData}
           />
         )}
-      </main>
-    </div>
+    </>
   );
 }
 
