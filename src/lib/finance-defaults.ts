@@ -2,15 +2,37 @@ import type { FinanceMonth, ChargePoste } from "@/types";
 
 // ── Charges fixes réelles par mois (brief Etienne 21/04/2026) ──
 // Toutes en HT. EDF varie par mois, le reste est constant.
+//
+// ⚠️ LES TROIS LOYERS NE SONT PAS TOUS DES CHARGES DE CLP. Etabli le
+// 23/09/2026 sur les avis d'echeance, consigne dans FINANCE-TIERS.md :
+//   · L'ATELIER      — Francois Fabra          — paye par CLP  — 5 000 €/mois
+//   · L'APPARTEMENT  — Marie-Helene Fabra      — paye par AAA  — 4 400 €/mois
+//   · LA BOUTIQUE    — SCI Diderot Beccaria    — paye par CLP  — FRANCHISE
+// Seul L'ATELIER est donc un loyer de CLP. Celui de L'APPARTEMENT n'a rien a
+// faire ici : il ne sort pas des comptes de CLP. Un virement « LOYER AAA » de
+// 4 400 € part pourtant du compte CLP certains mois — non qualifie a ce jour,
+// ne pas l'inscrire en charge fixe tant qu'on ne sait pas ce qu'il couvre.
+//
+// ⏳ LA BOUTIQUE est en franchise de loyer depuis le 01/05/2026 : seules les
+// charges, 144 €/mois, sortent. La date de FIN de franchise est dans le bail
+// et n'a pas ete relevee — c'est une marche de charge a venir. A completer.
 
 const EDF_BY_MONTH: Record<number, number> = {
   1: 302, 2: 235, 3: 207, 4: 191, 5: 176, 6: 286,
   7: 340, 8: 187, 9: 201, 10: 223, 11: 360, 12: 389,
 };
 
-function chargesFixesMois(month: number): number {
+/** Charges de LA BOUTIQUE : rien avant la prise a bail, 144 € ensuite. */
+const BOUTIQUE_DEPUIS = { year: 2026, month: 5 };
+function chargesBoutique(month: number, year: number): number {
+  if (year < BOUTIQUE_DEPUIS.year) return 0;
+  if (year === BOUTIQUE_DEPUIS.year && month < BOUTIQUE_DEPUIS.month) return 0;
+  return 144;
+}
+
+function chargesFixesMois(month: number, year: number): number {
   return (
-    5_000 +  // Loyer
+    5_000 +  // Loyer L'ATELIER (le seul porte par CLP)
     5_833 +  // Crédit travaux
     (EDF_BY_MONTH[month] ?? 300) +
     228 +    // Assurance
@@ -19,7 +41,8 @@ function chargesFixesMois(month: number): number {
     450 +    // Fibre
     300 +    // Logiciels
     132 +    // Frais bancaires
-    135      // Divers (CB)
+    135 +    // Divers (CB)
+    chargesBoutique(month, year)
   );
 }
 
@@ -28,14 +51,14 @@ const CHARGES_VAR_BY_MONTH: Record<number, number> = {
   9: 14_700,
 };
 
-export function totalChargesMois(month: number): number {
-  return chargesFixesMois(month) + (CHARGES_VAR_BY_MONTH[month] ?? 0);
+export function totalChargesMois(month: number, year = 2026): number {
+  return chargesFixesMois(month, year) + (CHARGES_VAR_BY_MONTH[month] ?? 0);
 }
 
 // ── Default postes for the ChargesFixesEditor ──
 
 export const DEFAULT_CHARGES_POSTES: ChargePoste[] = [
-  { id: "loyer",      label: "Loyer",              tvaRate: 0.20, inputMode: "ht", amounts: Object.fromEntries(Array.from({length:12},(_,i)=>[i+1, 5_000])) },
+  { id: "loyer",      label: "Loyer L'ATELIER",    tvaRate: 0.20, inputMode: "ht", amounts: Object.fromEntries(Array.from({length:12},(_,i)=>[i+1, 5_000])) },
   { id: "credit",     label: "Crédit travaux",     tvaRate: 0,    inputMode: "ht", amounts: Object.fromEntries(Array.from({length:12},(_,i)=>[i+1, 5_833])) },
   { id: "edf",        label: "EDF",                tvaRate: 0.20, inputMode: "ht", amounts: { ...EDF_BY_MONTH } },
   { id: "assurance",  label: "Assurance",           tvaRate: 0,    inputMode: "ht", amounts: Object.fromEntries(Array.from({length:12},(_,i)=>[i+1, 228])) },
@@ -45,6 +68,10 @@ export const DEFAULT_CHARGES_POSTES: ChargePoste[] = [
   { id: "logiciels",  label: "Logiciels",           tvaRate: 0.20, inputMode: "ht", amounts: Object.fromEntries(Array.from({length:12},(_,i)=>[i+1, 300])) },
   { id: "banque",     label: "Frais bancaires",    tvaRate: 0,    inputMode: "ht", amounts: Object.fromEntries(Array.from({length:12},(_,i)=>[i+1, 132])) },
   { id: "divers",     label: "Divers (CB)",        tvaRate: 0.20, inputMode: "ht", amounts: Object.fromEntries(Array.from({length:12},(_,i)=>[i+1, 135])) },
+  { id: "boutique",   label: "Charges LA BOUTIQUE", tvaRate: 0.20, inputMode: "ht", amounts: Object.fromEntries(Array.from({length:8},(_,i)=>[i+5, 144])) },
+  // ⏳ 14 700 € : chiffre a rapprocher des SEPT obligataires OCA identifies par
+  // le fil pilotage — l'estimation de leur cote est plus proche de 21 000 €.
+  // Non tranche : on garde la valeur inscrite plutot que d'en inventer une.
   { id: "obligataire", label: "Intérêts obligataires", tvaRate: 0, inputMode: "ht", amounts: { 9: 14_700 } },
 ];
 
@@ -59,7 +86,10 @@ export const FINANCE_DEFAULTS_2026: Omit<FinanceMonth, "year">[] = [
   { month: 6,  status: "planned",     chargesFixes: totalChargesMois(6),  caPrevisionnel: 35_000 },
   { month: 7,  status: "planned",     chargesFixes: totalChargesMois(7),  caPrevisionnel: 8_000 },
   { month: 8,  status: "planned",     chargesFixes: totalChargesMois(8),  caPrevisionnel: 2_000 },
-  { month: 9,  status: "planned",     chargesFixes: totalChargesMois(9) + 14_700, caPrevisionnel: 10_000 },
+  // ⚠️ PAS de « + 14 700 » ici : totalChargesMois ajoute deja les interets
+  // obligataires via CHARGES_VAR_BY_MONTH. L'ecrire deux fois chargeait
+  // septembre de 29 400 € au lieu de 14 700. Corrige le 26/09/2026.
+  { month: 9,  status: "planned",     chargesFixes: totalChargesMois(9),  caPrevisionnel: 10_000 },
   { month: 10, status: "planned",     chargesFixes: totalChargesMois(10), caPrevisionnel: 11_000 },
   { month: 11, status: "planned",     chargesFixes: totalChargesMois(11), caPrevisionnel: 25_000 },
   { month: 12, status: "planned",     chargesFixes: totalChargesMois(12), caPrevisionnel: 20_000 },
@@ -71,7 +101,7 @@ const FINANCE_DEFAULTS_2025: Omit<FinanceMonth, "year">[] = Array.from(
   (_, i) => ({
     month: i + 1,
     status: "planned" as const,
-    chargesFixes: totalChargesMois(i + 1),
+    chargesFixes: totalChargesMois(i + 1, 2025),
     caPrevisionnel: 0,
   })
 );

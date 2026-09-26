@@ -119,6 +119,11 @@ export interface InvoiceItem {
   status: string;
   paid: boolean;
   amountHT: number;
+  /** Date du virement recu (transaction bancaire rapprochee), ou null. */
+  datePaiement: string | null;
+  /** Facture payee sans date connue : on a repli sur la date de facture. */
+  paiementEstime: boolean;
+  /** Mois d'imputation (1-12) — celui du PAIEMENT, pas celui de la facture. */
   attributedMonth: number;
 }
 

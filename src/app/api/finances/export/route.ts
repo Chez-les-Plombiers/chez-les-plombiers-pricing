@@ -36,7 +36,7 @@ export async function GET(request: Request) {
     ]);
 
     const header =
-      "Mois,Statut,Charges,CA (Pennylane),CA Prévisionnel,Résultat,Cumul Résultat\n";
+      "Mois,Statut,Charges,CA encaissé (Pennylane),CA Prévisionnel,Solde,Cumul solde\n";
 
     let cumul = 0;
     const rows = months
@@ -48,8 +48,8 @@ export async function GET(request: Request) {
         if (status === "Réalisé") ca = p.caEncaisse;
         else if (status === "En cours") ca = p.caFacture > 0 ? p.caFacture : m.caPrevisionnel;
 
-        const resultat = ca - m.chargesFixes;
-        cumul += resultat;
+        const solde = ca - m.chargesFixes;
+        cumul += solde;
 
         return [
           MONTH_NAMES[m.month - 1],
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
           m.chargesFixes,
           status === "Réalisé" ? p.caEncaisse : p.caFacture,
           m.caPrevisionnel,
-          resultat,
+          solde,
           cumul,
         ].join(",");
       })

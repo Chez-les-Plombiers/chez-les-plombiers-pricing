@@ -241,17 +241,41 @@ Les jours antérieurs à aujourd'hui sont grisés et non cliquables sur le calen
 - **Auth :** même auth admin que le reste (sessionStorage + ADMIN_PASSWORD)
 - **Brief :** Etienne v2 (21/04/2026) — 14 items appliqués intégralement
 
+⚠️ **`DASHBOARD-FINANCES-SPEC.md` (26/09/2026) est le document de référence : le code
+s'y conforme, pas l'inverse.** Le lire avant de toucher à quoi que ce soit ici. Ce qui
+suit ne décrit que l'implémentation.
+
 ### Sources de CA
-- **Pennylane** = source unique. Colonne CA unique attribuée par date d'événement (ATTRIBUÉ À).
-- **Filtre cautions** : exclut factures dont libellé contient "caution" ou "dépôt de garantie"
+- **Pennylane** = source unique, en **HT**, en **base caisse**.
+- **Attribution : le mois du PAIEMENT** (spec §3), pas celui de la facture ni de
+  l'évènement. Chez CLP le règlement intégral est exigé *avant* l'évènement : une date
+  de novembre vendue en septembre est encaissée en septembre.
+  ⚠️ Pennylane ne porte aucune date de paiement sur la facture — `paid` est un booléen
+  et la sous-ressource `payments` est **vide** sur toutes les factures de CLP. La seule
+  trace datée est la transaction bancaire rapprochée, `matched_transactions`, une
+  sous-ressource : **un appel par facture**, mis en cache dans
+  `finances:invoice-payments`. On retient la transaction la plus tardive.
+  **81 % des factures payées en portent une** ; les 19 % restantes ont été pointées à la
+  main dans Pennylane, sans rapprochement bancaire → repli sur la date de facture, et
+  le tiroir l'affiche `≈ date` en doré.
+  L'exercice se décide aussi sur la date de paiement : on ratisse les factures de
+  N−1 / N / N+1 avant de filtrer. Bascule mesurée sur 2026 : jusqu'à **28 500 €**
+  déplacés d'un mois à l'autre, **total annuel inchangé**.
+- **Filtre cautions** : la **ligne d'article** fait seule preuve — voir le pavé de
+  `natureDeLaFacture()` dans `pennylane.ts`, et la règle du 14/09/2026. Ni le montant,
+  ni le mot-clé, ni la TVA nulle, ni l'objet ne discriminent.
 - **Legacy jan 2026** : 39 795€ HT hardcodé dans `GET /api/finances` (pré-Pennylane)
 - **CA Prévisionnel** : saisie manuelle, masqué automatiquement dès qu'un CA réel Pennylane existe
 
 ### Statut automatique (non cliquable)
 - `autoStatus(month, year)` : passés → Réalisé, en cours → En cours, futurs → Prévi.
 
-### Logique Résultat
-- Résultat = effectiveCA(m) − chargesFixes (toujours calculé, même CA=0)
+### Solde d'exploitation — et pourquoi pas « résultat »
+- 🔴 **Le mot « résultat » est proscrit** (spec §2). Ce tableau est en base caisse : le
+  remboursement d'emprunt y compte en entier, l'amortissement n'y existe pas. Le cabinet
+  fait l'inverse. Les deux sont justes, mais **ils ne donneront jamais le même chiffre**
+  — et le mot « résultat » laisserait croire qu'ils le devraient.
+- `soldeExploitation(m)` = effectiveCA(m) − chargesFixes (toujours calculé, même CA=0)
 - Cumul = somme progressive de TOUS les mois (charges toujours déduites)
 - Cumul affiché sur tous les mois y compris futurs
 
@@ -260,7 +284,18 @@ Les jours antérieurs à aujourd'hui sont grisés et non cliquables sur le calen
 - Fallback : `DEFAULT_CHARGES_POSTES` dans `finance-defaults.ts`
 - `GET /api/finances` calcule totaux/mois depuis postes → override `chargesFixes`
 - Modal spreadsheet : CRUD postes (ajouter/renommer/supprimer), TVA obligatoire, saisie HT ou TTC
-- 11 postes par défaut (EDF variable/mois, intérêts obligataires 14 700€ en sept)
+- 12 postes par défaut (EDF variable/mois, intérêts obligataires 14 700€ en sept)
+- ⚠️ **Les trois loyers ne sont pas tous des charges de CLP** (spec §5, relevé sur les
+  avis d'échéance le 23/09/2026) : L'ATELIER 5 000 €/mois payé par **CLP** ; L'APPARTEMENT
+  4 400 €/mois payé par **AAA** — il n'a rien à faire ici ; LA BOUTIQUE en **franchise de
+  loyer depuis le 01/05/2026**, seules 144 €/mois de charges sortent. Les « 2 250 € »
+  qu'Étienne prenait pour un loyer de LA BOUTIQUE sont le dépôt de garantie, jamais versé.
+- ⏳ **La date de fin de franchise de LA BOUTIQUE est dans le bail et n'a pas été relevée.**
+  C'est une marche de charge à venir.
+- ⚠️ Un virement `LOYER AAA` de 4 400 € part du compte CLP certains mois — **non qualifié**,
+  donc pas inscrit en charge fixe.
+- ⚠️ Septembre portait **14 700 € deux fois** (29 400 €) : `FINANCE_DEFAULTS_2026` ajoutait
+  les intérêts obligataires que `totalChargesMois` comptait déjà. Corrigé le 26/09/2026.
 
 ### Réattribution de factures
 - Overrides KV : `finances:invoice-overrides:YYYY` → `{invoiceId: month}`
@@ -274,9 +309,25 @@ Les jours antérieurs à aujourd'hui sont grisés et non cliquables sur le calen
 
 ### 4 cartes synthèse
 1. CA Réalisé YTD (cumul encaissé)
-2. Résultat cumulé (vert/rouge)
+2. Solde d'exploitation (vert/rouge) — **jamais « résultat »**
 3. CA Prévi. restant (mois futurs)
 4. Break-even estimé (mois+année ou "Non atteint")
+
+### Ce que la spec demande et qui n'est PAS fait — et pourquoi
+- **Bloc B, trésorerie d'exploitation en TTC** (spec §3) : demande les flux bancaires.
+  Ils existent, mais dans le SQLite local `clp-finance/db/` — qu'une appli Vercel ne peut
+  pas lire. Il faudra exporter un agrégat mensuel vers KV. **Décision d'architecture à
+  prendre.**
+- **CA encaissé HT N−1** et **cumul mobile 12 mois** (spec §3) : supposent 2025.
+  Pennylane n'en a rien d'exploitable — **les 16 pièces 2025 y sont toutes `archived` ou
+  `incomplete`**. Le CA 2025 établi sur pièces (155 450,22 € HT, 35 jours) vit dans
+  `clp-finance/reports/CA-2025.md`, mais il est rattaché à la **date d'évènement**, pas à
+  celle du paiement : **non comparable en l'état** avec le bloc A. Une série mensuelle
+  encaissée 2025 est dérivable des liens pièce↔mouvement du référentiel, dont **47 sur 81
+  sont encore `a_valider`**. À reprendre quand le fil AUDIT les aura validés.
+- **Jours vendus** (spec §6) : rattachement facture → évènement couvert à 100 % sur 2025
+  mais **4 % sur 2026**. L'indicateur, et le prix moyen par jour avec lui, ne peut être
+  affiché que pour 2025.
 
 ### Graphique
 - Courbe cumul : trait vert réalisé + pointillés dorés projection

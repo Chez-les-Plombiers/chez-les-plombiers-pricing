@@ -1,5 +1,11 @@
 import type { PennylaneMonthData } from "@/types";
-import { getInvoiceNatures, setInvoiceNatures, type InvoiceNature } from "@/lib/kv";
+import {
+  getInvoiceNatures,
+  setInvoiceNatures,
+  getInvoicePayments,
+  setInvoicePayments,
+  type InvoiceNature,
+} from "@/lib/kv";
 
 const API_BASE = "https://app.pennylane.com/api/external/v2";
 
@@ -35,7 +41,12 @@ export interface InvoiceItem {
   status: string;
   paid: boolean;
   amountHT: number;
-  /** Month this invoice counts toward (1-12). Default = invoice date month. Can be overridden. */
+  /** Date du virement recu, lue sur la transaction bancaire rapprochee. */
+  datePaiement: string | null;
+  /** true = facture payee dont la date de paiement est inconnue : on a repli
+   *  sur la date de facture. A afficher comme approximatif. */
+  paiementEstime: boolean;
+  /** Month this invoice counts toward (1-12). Mois du PAIEMENT. Can be overridden. */
   attributedMonth: number;
 }
 
@@ -45,34 +56,56 @@ function getApiKey(): string {
   return key;
 }
 
-async function fetchPage(cursor?: string): Promise<PennylaneResponse> {
-  const url = new URL(`${API_BASE}/customer_invoices`);
-  url.searchParams.set("page_size", "100");
-  if (cursor) url.searchParams.set("cursor", cursor);
-
-  const res = await fetch(url.toString(), {
-    headers: {
-      Authorization: `Bearer ${getApiKey()}`,
-      Accept: "application/json",
-    },
-    cache: "no-store",
-  });
-
-  if (res.status === 429) {
-    await new Promise((r) => setTimeout(r, 2000));
-    const retry = await fetch(url.toString(), {
-      headers: {
-        Authorization: `Bearer ${getApiKey()}`,
-        Accept: "application/json",
-      },
-      cache: "no-store",
-    });
-    if (!retry.ok) throw new Error(`Pennylane API error: ${retry.status}`);
-    return retry.json();
+/**
+ * Appel API avec reprise sur 429.
+ *
+ * ⚠️ Pennylane limite le debit et le fait sentir des la vingtaine d'appels
+ * rapprochee : le tableau de bord en emet un par facture sans TVA (nature) et
+ * un par facture payee (date de paiement). Sans reprise, un rechargement a
+ * froid renvoie une annee trouee, sans la moindre erreur visible.
+ */
+async function apiGet<T>(chemin: string): Promise<T | null> {
+  for (let essai = 0; essai < 4; essai++) {
+    try {
+      const res = await fetch(`${API_BASE}${chemin}`, {
+        headers: {
+          Authorization: `Bearer ${getApiKey()}`,
+          Accept: "application/json",
+        },
+        cache: "no-store",
+      });
+      if (res.status === 429) {
+        await new Promise((r) => setTimeout(r, 800 * (essai + 1)));
+        continue;
+      }
+      if (!res.ok) return null;
+      return (await res.json()) as T;
+    } catch {
+      return null;
+    }
   }
+  return null;
+}
 
-  if (!res.ok) throw new Error(`Pennylane API error: ${res.status}`);
-  return res.json();
+/** Execute des taches par petits paquets — voir la note de debit sur apiGet. */
+async function parPaquets<T, R>(
+  items: T[],
+  taille: number,
+  tache: (item: T) => Promise<R>
+): Promise<R[]> {
+  const out: R[] = [];
+  for (let i = 0; i < items.length; i += taille) {
+    out.push(...(await Promise.all(items.slice(i, i + taille).map(tache))));
+  }
+  return out;
+}
+
+async function fetchPage(cursor?: string): Promise<PennylaneResponse> {
+  const q = new URLSearchParams({ page_size: "100" });
+  if (cursor) q.set("cursor", cursor);
+  const data = await apiGet<PennylaneResponse>(`/customer_invoices?${q}`);
+  if (!data) throw new Error("Pennylane API error");
+  return data;
 }
 
 /**
@@ -84,20 +117,36 @@ async function fetchPage(cursor?: string): Promise<PennylaneResponse> {
  * emise ne change plus.
  */
 async function fetchInvoiceLines(invoiceId: number): Promise<string> {
-  try {
-    const res = await fetch(`${API_BASE}/customer_invoices/${invoiceId}/invoice_lines`, {
-      headers: { Authorization: `Bearer ${getApiKey()}`, Accept: "application/json" },
-      cache: "no-store",
-    });
-    if (!res.ok) return "";
-    const data = await res.json();
-    return (data.items ?? [])
-      .map((l: { label?: string; description?: string }) =>
-        `${l.label ?? ""} ${l.description ?? ""}`)
-      .join(" ");
-  } catch {
-    return "";
-  }
+  const data = await apiGet<{ items?: { label?: string; description?: string }[] }>(
+    `/customer_invoices/${invoiceId}/invoice_lines`
+  );
+  return (data?.items ?? [])
+    .map((l) => `${l.label ?? ""} ${l.description ?? ""}`)
+    .join(" ");
+}
+
+/**
+ * Date a laquelle l'argent est reellement arrive.
+ *
+ * ⚠️ Pennylane ne porte AUCUNE date de paiement sur la facture : `paid` est un
+ * booleen, et la sous-ressource `payments` est vide sur toutes les factures de
+ * CLP (releve le 26/09/2026). La seule trace datee est la TRANSACTION BANCAIRE
+ * rapprochee — `matched_transactions`. On retient la plus tardive : un solde
+ * verse en deux fois n'est encaisse qu'au dernier virement.
+ *
+ * 81 % des factures payees en portent une. Les autres ont ete pointees a la
+ * main dans Pennylane, sans rapprochement bancaire : pour celles-la on se
+ * rabat sur la date de facture, et on le DIT (`paiementEstime`).
+ */
+async function fetchDatePaiement(invoiceId: number): Promise<string | null> {
+  const data = await apiGet<{ items?: { date?: string }[] }>(
+    `/customer_invoices/${invoiceId}/matched_transactions`
+  );
+  const dates = (data?.items ?? [])
+    .map((t) => t.date)
+    .filter((d): d is string => typeof d === "string" && d.length >= 10);
+  if (!dates.length) return null;
+  return dates.sort()[dates.length - 1];
 }
 
 const DEPOT = /d[ée]p[oô]t\s+de\s+garantie|caution/i;
@@ -156,8 +205,13 @@ function extractClientName(label: string): string {
 }
 
 /**
- * Fetch all active invoices for a year, apply month overrides, and return
- * both individual invoices and monthly aggregates.
+ * Factures d'un exercice, attribuees au MOIS DU PAIEMENT.
+ *
+ * ⚠️ L'exercice se decide sur la date de PAIEMENT, pas sur celle de la
+ * facture : une facture de decembre reglee en janvier est du chiffre
+ * d'affaires de janvier. On ratisse donc les factures des annees voisines
+ * avant de filtrer. Sur 2026, ce seul changement deplace jusqu'a 28 500 €
+ * d'un mois a l'autre — le total annuel, lui, ne bouge pas.
  */
 export async function getPennylaneData(
   year: number,
@@ -177,27 +231,54 @@ export async function getPennylaneData(
     pages++;
   } while (cursor && pages < 20);
 
-  // Annee + statut : le reste se decide sur la nature de la piece.
-  const duMillesime = all.filter(
+  // Fenetre large : l'annee d'imputation est celle du paiement.
+  const annees = [year - 1, year, year + 1].map((y) => `${y}-`);
+  const candidates = all.filter(
     (inv) =>
-      inv.date?.startsWith(`${year}-`) &&
+      inv.date &&
+      annees.some((a) => inv.date!.startsWith(a)) &&
       !["cancelled", "archived", "incomplete"].includes(inv.status)
   );
 
   // Les depots de garantie ne sont pas du produit : ils sont dus au client.
-  const cache = await getInvoiceNatures();
-  const avant = JSON.stringify(cache);
-  const natures = await Promise.all(
-    duMillesime.map((inv) => natureDeLaFacture(inv, cache))
+  const cacheNatures = await getInvoiceNatures();
+  const avantNatures = JSON.stringify(cacheNatures);
+  const natures = await parPaquets(candidates, 3, (inv) =>
+    natureDeLaFacture(inv, cacheNatures)
   );
-  if (JSON.stringify(cache) !== avant) await setInvoiceNatures(cache);
+  if (JSON.stringify(cacheNatures) !== avantNatures) {
+    await setInvoiceNatures(cacheNatures);
+  }
 
-  const active = duMillesime.filter((_, i) => natures[i] === "revenue");
+  const active = candidates.filter((_, i) => natures[i] === "revenue");
+
+  // Dates de paiement : cache d'abord, appels ensuite, et seulement pour les
+  // factures payees dont on ne sait pas encore quand.
+  const cachePaiements = await getInvoicePayments();
+  const aResoudre = active.filter((inv) => inv.paid && !cachePaiements[inv.id]);
+  let ajouts = 0;
+  const resolues = await parPaquets(aResoudre, 3, (inv) => fetchDatePaiement(inv.id));
+  aResoudre.forEach((inv, i) => {
+    const d = resolues[i];
+    if (d) {
+      cachePaiements[inv.id] = d;
+      ajouts++;
+    }
+  });
+  if (ajouts > 0) await setInvoicePayments(cachePaiements);
 
   // Build clean invoice list
-  const invoices: InvoiceItem[] = active.map((inv) => {
-    const defaultMonth = parseInt(inv.date!.slice(5, 7), 10);
-    return {
+  const invoices: InvoiceItem[] = [];
+  for (const inv of active) {
+    const datePaiement = inv.paid ? (cachePaiements[inv.id] ?? null) : null;
+    const reference = datePaiement ?? inv.date!;
+    const override = monthOverrides?.[inv.id];
+
+    // Hors exercice : une facture payee l'an dernier ou l'an prochain ne
+    // compte pas ici. Un reglage manuel, lui, prime toujours.
+    if (override === undefined && !reference.startsWith(`${year}-`)) continue;
+
+    invoices.push({
       id: inv.id,
       invoiceNumber: inv.invoice_number,
       clientName: extractClientName(inv.label),
@@ -206,9 +287,11 @@ export async function getPennylaneData(
       status: inv.status,
       paid: inv.paid,
       amountHT: parseFloat(inv.currency_amount_before_tax || "0"),
-      attributedMonth: monthOverrides?.[inv.id] ?? defaultMonth,
-    };
-  });
+      datePaiement,
+      paiementEstime: inv.paid && !datePaiement,
+      attributedMonth: override ?? parseInt(reference.slice(5, 7), 10),
+    });
+  }
 
   // Aggregate by attributed month
   const monthly: Record<number, PennylaneMonthData> = {};

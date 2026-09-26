@@ -108,8 +108,16 @@ function showPrevisionnel(m: FinanceMonthWithPennylane): boolean {
   return m.pennylane.caFacture === 0 && m.pennylane.caEncaisse === 0;
 }
 
-/** Monthly result = CA - charges (always computed, even if CA=0) */
-function resultat(m: FinanceMonthWithPennylane): number {
+/**
+ * Solde d'exploitation du mois = CA - charges.
+ *
+ * ⚠️ NE JAMAIS APPELER CA UN « RESULTAT » (spec du 26/09/2026). Ce tableau est
+ * tenu en base caisse : le remboursement d'emprunt y compte en entier, et
+ * l'amortissement n'y existe pas. Le cabinet fait l'inverse. Les deux sont
+ * justes, mais ils ne donneront jamais le meme chiffre — et le mot
+ * « resultat » laisserait croire qu'ils le devraient.
+ */
+function soldeExploitation(m: FinanceMonthWithPennylane): number {
   return effectiveCA(m) - m.chargesFixes;
 }
 
@@ -292,13 +300,13 @@ function FinancesContent({
     const totalEncaisse = filteredData.reduce(
       (s, m) => s + m.pennylane.caEncaisse, 0
     );
-    const cumulResult = filteredData.reduce((s, m) => s + resultat(m), 0);
+    const cumulSolde = filteredData.reduce((s, m) => s + soldeExploitation(m), 0);
     const totalPrevRestant = filteredData
       .filter((m) => autoStatus(m.month, m.year) === "planned")
       .reduce((s, m) => s + m.caPrevisionnel, 0);
     const breakEven = calculateBreakEvenMonth(toCumulativeMonths(data ?? []));
 
-    return { totalEncaisse, cumulResult, totalPrevRestant, breakEven };
+    return { totalEncaisse, cumulSolde, totalPrevRestant, breakEven };
   }, [filteredData, data]);
 
   if (loading || !data) {
@@ -363,7 +371,8 @@ function FinancesContent({
         </div>
         <div className="mb-7 flex items-center justify-between">
           <p className="text-xs text-muted">
-            Suivi mensuel — CA Pennylane (attribué par date d&apos;événement) vs charges.
+            Suivi mensuel — CA Pennylane encaissé, attribué au mois du paiement,
+            hors dépôts de garantie. Base caisse, en HT.
           </p>
           <div className="flex items-center gap-1">
             {PERIOD_FILTERS.map((f) => (
@@ -392,13 +401,13 @@ function FinancesContent({
               color="green"
             />
             <SummaryCard
-              label="Résultat cumulé"
-              value={formatSigned(summaryCards.cumulResult)}
-              sub="CA − charges à ce jour"
+              label="Solde d'exploitation"
+              value={formatSigned(summaryCards.cumulSolde)}
+              sub="CA − charges, cumulé — ce n'est pas un résultat comptable"
               color={
-                summaryCards.cumulResult > 0
+                summaryCards.cumulSolde > 0
                   ? "green"
-                  : summaryCards.cumulResult < 0
+                  : summaryCards.cumulSolde < 0
                     ? "red"
                     : undefined
               }
@@ -513,8 +522,11 @@ function FinancesContent({
                   <th className="border-b border-border px-3.5 py-2.5 text-right font-mono text-[10px] uppercase tracking-wider text-muted">
                     CA Prévi.
                   </th>
-                  <th className="border-b border-border px-3.5 py-2.5 text-right font-mono text-[10px] uppercase tracking-wider text-muted">
-                    Résultat
+                  <th
+                    className="border-b border-border px-3.5 py-2.5 text-right font-mono text-[10px] uppercase tracking-wider text-muted"
+                    title="CA − charges, en base caisse. Ce n'est pas le résultat comptable."
+                  >
+                    Solde
                   </th>
                   <th className="border-b border-border px-3.5 py-2.5 text-right font-mono text-[10px] uppercase tracking-wider text-muted">
                     Cumul
@@ -625,7 +637,7 @@ function MonthRows({
     let cumul = 0;
     // Use allData (not filtered) for correct cumul calculation
     for (const m of allData) {
-      cumul += resultat(m);
+      cumul += soldeExploitation(m);
       result[m.month] = cumul;
     }
     return result;
@@ -635,7 +647,7 @@ function MonthRows({
     <>
       {data.map((m) => {
         const status = autoStatus(m.month, year);
-        const res = resultat(m);
+        const res = soldeExploitation(m);
         const ca = effectiveCA(m);
         const isInvExp = expandedInvoices.has(m.month);
         const underTarget = ca > 0 && ca < m.chargesFixes * 0.8;
@@ -784,7 +796,7 @@ function FooterRow({ data, year }: { data: FinanceMonthWithPennylane[]; year: nu
     return s + (status === "realized" ? m.pennylane.caEncaisse : m.pennylane.caFacture);
   }, 0);
   const totPrev = data.reduce((s, m) => s + (showPrevisionnel(m) ? m.caPrevisionnel : 0), 0);
-  const totRes = data.reduce((s, m) => s + resultat(m), 0);
+  const totRes = data.reduce((s, m) => s + soldeExploitation(m), 0);
 
   const resColor =
     totRes > 0 ? "text-[#5cb87c]" : totRes < 0 ? "text-[#d95f5f]" : "text-muted";
@@ -836,6 +848,12 @@ function InvoiceDrawer({
             <th className="pb-1.5 pr-4 font-mono text-[9px] uppercase tracking-wider text-muted">
               Date facture
             </th>
+            <th
+              className="pb-1.5 pr-4 font-mono text-[9px] uppercase tracking-wider text-muted"
+              title="Date du virement reçu — c'est elle qui décide du mois d'imputation."
+            >
+              Payée le
+            </th>
             <th className="pb-1.5 pr-4 font-mono text-[9px] uppercase tracking-wider text-muted">
               N° Facture
             </th>
@@ -867,6 +885,20 @@ function InvoiceDrawer({
               </td>
               <td className="py-1.5 pr-4 font-mono text-[11px] text-muted">
                 {inv.date}
+              </td>
+              <td className="py-1.5 pr-4 font-mono text-[11px]">
+                {inv.datePaiement ? (
+                  <span className="text-foreground">{inv.datePaiement}</span>
+                ) : inv.paiementEstime ? (
+                  <span
+                    className="text-[#c9a84c]"
+                    title="Facture pointée à la main dans Pennylane, sans rapprochement bancaire : on se rabat sur la date de facture."
+                  >
+                    ≈ {inv.date}
+                  </span>
+                ) : (
+                  <span className="text-muted">—</span>
+                )}
               </td>
               <td className="py-1.5 pr-4 font-mono text-[11px] text-muted">
                 {inv.invoiceNumber || "—"}

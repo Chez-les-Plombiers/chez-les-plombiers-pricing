@@ -154,6 +154,34 @@ export async function setInvoiceNatures(
   if (redis) await redis.set(INVOICE_NATURES_KEY, natures);
 }
 
+// --- Dates de paiement (cache) ---
+// Le tableau de bord attribue une facture au MOIS DE SON PAIEMENT (spec du
+// 26/09/2026). Pennylane ne porte pas cette date sur la facture : il faut la
+// lire sur la transaction bancaire rapprochee, une sous-ressource, donc un
+// appel par facture. On garde le resultat.
+//
+// ⚠️ A la difference de la nature, une date de paiement APPARAIT avec le temps :
+// une facture aujourd'hui impayee sera payee demain. On ne met donc en cache
+// que les dates RESOLUES. Une facture payee sans date connue est reinterrogee
+// a chaque chargement — elles sont peu nombreuses, et c'est le seul moyen de
+// voir arriver un rapprochement fait entre-temps.
+
+const INVOICE_PAYMENTS_KEY = "finances:invoice-payments";
+
+export async function getInvoicePayments(): Promise<Record<number, string>> {
+  const redis = getRedis();
+  if (!redis) return {};
+  const data = await redis.get<Record<number, string>>(INVOICE_PAYMENTS_KEY);
+  return data || {};
+}
+
+export async function setInvoicePayments(
+  paiements: Record<number, string>
+): Promise<void> {
+  const redis = getRedis();
+  if (redis) await redis.set(INVOICE_PAYMENTS_KEY, paiements);
+}
+
 // --- Finances ---
 
 const FINANCES_KEY = (year: number) => `finances:${year}`;
