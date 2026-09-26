@@ -891,10 +891,14 @@ function InvoiceDrawer({
                   <span className="text-foreground">{inv.datePaiement}</span>
                 ) : inv.paiementEstime ? (
                   <span
-                    className="text-[#c9a84c]"
-                    title="Facture pointée à la main dans Pennylane, sans rapprochement bancaire : on se rabat sur la date de facture."
+                    className={inv.alerte?.startsWith("rapprochement") ? "text-[#d95f5f]" : "text-[#c9a84c]"}
+                    title={
+                      inv.alerte ??
+                      "Facture pointée à la main dans Pennylane, sans rapprochement bancaire : on se rabat sur la date de facture."
+                    }
                   >
-                    ≈ {inv.date}
+                    {inv.alerte?.startsWith("rapprochement") ? "⚠ " : "≈ "}
+                    {inv.date}
                   </span>
                 ) : (
                   <span className="text-muted">—</span>
@@ -935,6 +939,18 @@ function InvoiceDrawer({
           ))}
         </tbody>
       </table>
+      {invoices.some((i) => i.alerte) && (
+        <ul className="mt-2 space-y-1 border-t border-[rgba(255,255,255,0.05)] pt-2">
+          {invoices
+            .filter((i) => i.alerte)
+            .map((i) => (
+              <li key={i.id} className="text-[11px] text-[#c9a84c]">
+                <span className="font-mono font-bold">{i.invoiceNumber || i.clientName}</span>{" "}
+                — {i.alerte}
+              </li>
+            ))}
+        </ul>
+      )}
     </div>
   );
 }

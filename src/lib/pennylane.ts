@@ -16,6 +16,8 @@ interface RawPennylaneInvoice {
   status: string;
   paid: boolean;
   currency_amount_before_tax: string | null;
+  /** TTC — sert a verifier qu'un rapprochement bancaire tient debout. */
+  currency_amount: string | null;
   /** TVA de la facture. Un depot de garantie n'y est jamais soumis. */
   currency_tax: string | null;
   amount: string | null;
@@ -43,9 +45,12 @@ export interface InvoiceItem {
   amountHT: number;
   /** Date du virement recu, lue sur la transaction bancaire rapprochee. */
   datePaiement: string | null;
-  /** true = facture payee dont la date de paiement est inconnue : on a repli
-   *  sur la date de facture. A afficher comme approximatif. */
+  /** true = facture payee dont la date de paiement est inconnue ou refusee :
+   *  on a repli sur la date de facture. A afficher comme approximatif. */
   paiementEstime: boolean;
+  /** Anomalie a montrer telle quelle, ou null. Pennylane est notre source ;
+   *  quand elle se contredit, on le dit au lieu de choisir a sa place. */
+  alerte: string | null;
   /** Month this invoice counts toward (1-12). Mois du PAIEMENT. Can be overridden. */
   attributedMonth: number;
 }
@@ -138,15 +143,44 @@ async function fetchInvoiceLines(invoiceId: number): Promise<string> {
  * main dans Pennylane, sans rapprochement bancaire : pour celles-la on se
  * rabat sur la date de facture, et on le DIT (`paiementEstime`).
  */
-async function fetchDatePaiement(invoiceId: number): Promise<string | null> {
-  const data = await apiGet<{ items?: { date?: string }[] }>(
-    `/customer_invoices/${invoiceId}/matched_transactions`
+async function fetchDatePaiement(
+  inv: RawPennylaneInvoice
+): Promise<{ date: string | null; alerte: string | null }> {
+  const data = await apiGet<{ items?: { date?: string; amount?: string }[] }>(
+    `/customer_invoices/${inv.id}/matched_transactions`
   );
-  const dates = (data?.items ?? [])
-    .map((t) => t.date)
-    .filter((d): d is string => typeof d === "string" && d.length >= 10);
-  if (!dates.length) return null;
-  return dates.sort()[dates.length - 1];
+  const tx = (data?.items ?? []).filter(
+    (t): t is { date: string; amount?: string } =>
+      typeof t.date === "string" && t.date.length >= 10
+  );
+
+  if (!tx.length) {
+    return {
+      date: null,
+      alerte: "payée sans rapprochement bancaire — soit le virement n'est pas lettré, soit la facture a été pointée trop tôt",
+    };
+  }
+
+  // ⚠️ UN RAPPROCHEMENT PEUT ETRE FAUX, et un faux rapprochement deplace du
+  // CA d'un mois a l'autre en silence. Releve le 26/09/2026 : F-2026-09-15-109
+  // (960 € TTC) etait lettree a un virement de 900 € portant le numero d'une
+  // AUTRE facture, et date du 2 avril. Sans ce controle, 800 € de septembre
+  // partaient en avril sans que rien ne le signale.
+  const encaisse = tx.reduce((s, t) => s + parseFloat(t.amount || "0"), 0);
+  const ttc = parseFloat(inv.currency_amount || "0");
+  const ecart = encaisse - ttc;
+  const tolerance = Math.max(1, ttc * 0.005);
+
+  if (ttc > 0 && Math.abs(ecart) > tolerance) {
+    const signe = ecart > 0 ? "+" : "";
+    return {
+      date: null,
+      alerte: `rapprochement bancaire incohérent : ${Math.round(encaisse)} € lettrés pour ${Math.round(ttc)} € dus (${signe}${Math.round(ecart)} €) — à corriger dans Pennylane`,
+    };
+  }
+
+  const dates = tx.map((t) => t.date).sort();
+  return { date: dates[dates.length - 1], alerte: null };
 }
 
 const DEPOT = /d[ée]p[oô]t\s+de\s+garantie|caution/i;
@@ -256,14 +290,18 @@ export async function getPennylaneData(
   // factures payees dont on ne sait pas encore quand.
   const cachePaiements = await getInvoicePayments();
   const aResoudre = active.filter((inv) => inv.paid && !cachePaiements[inv.id]);
+  const alertes: Record<number, string> = {};
   let ajouts = 0;
-  const resolues = await parPaquets(aResoudre, 3, (inv) => fetchDatePaiement(inv.id));
+  const resolues = await parPaquets(aResoudre, 3, (inv) => fetchDatePaiement(inv));
   aResoudre.forEach((inv, i) => {
-    const d = resolues[i];
-    if (d) {
-      cachePaiements[inv.id] = d;
+    const { date, alerte } = resolues[i];
+    // On ne met en cache qu'une date SAINE. Une anomalie n'est pas gravee :
+    // elle doit disparaitre d'elle-meme le jour ou Pennylane est corrige.
+    if (date) {
+      cachePaiements[inv.id] = date;
       ajouts++;
     }
+    if (alerte) alertes[inv.id] = alerte;
   });
   if (ajouts > 0) await setInvoicePayments(cachePaiements);
 
@@ -289,6 +327,7 @@ export async function getPennylaneData(
       amountHT: parseFloat(inv.currency_amount_before_tax || "0"),
       datePaiement,
       paiementEstime: inv.paid && !datePaiement,
+      alerte: alertes[inv.id] ?? null,
       attributedMonth: override ?? parseInt(reference.slice(5, 7), 10),
     });
   }
