@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getFinances, getInvoiceOverrides, getChargesPostes } from "@/lib/kv";
 import { getPennylaneData } from "@/lib/pennylane";
 import type { FinanceMonthWithPennylane, ChargePoste } from "@/types";
+import { estAdmin } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -20,8 +21,7 @@ function chargesFromPostes(postes: ChargePoste[]): Record<number, number> {
 }
 
 export async function GET(request: Request) {
-  const token = request.headers.get("Authorization");
-  if (token !== process.env.ADMIN_PASSWORD) {
+  if (!(await estAdmin(request))) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 

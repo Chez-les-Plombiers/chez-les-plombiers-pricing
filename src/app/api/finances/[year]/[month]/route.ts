@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { updateFinanceMonth } from "@/lib/kv";
+import { estAdmin } from "@/lib/auth";
 
 interface PatchBody {
   caPrevisionnel?: number;
@@ -11,8 +12,7 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ year: string; month: string }> }
 ) {
-  const token = request.headers.get("Authorization");
-  if (token !== process.env.ADMIN_PASSWORD) {
+  if (!(await estAdmin(request))) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 

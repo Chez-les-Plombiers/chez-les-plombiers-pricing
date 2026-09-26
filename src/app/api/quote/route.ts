@@ -4,11 +4,11 @@ import { sendQuoteNotification } from "@/lib/email";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import type { QuoteRequest } from "@/types";
 import { getVenue, isVenueSlug, DEFAULT_VENUE } from "@/lib/venues";
+import { estAdmin } from "@/lib/auth";
 
 export async function GET(request: Request) {
   try {
-    const auth = request.headers.get("Authorization");
-    if (auth !== process.env.ADMIN_PASSWORD) {
+    if (!(await estAdmin(request))) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
     }
     const quotes = await getAllQuotes();

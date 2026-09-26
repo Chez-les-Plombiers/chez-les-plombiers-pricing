@@ -15,6 +15,7 @@ import {
   Settings2,
 } from "lucide-react";
 import { AdminLogin } from "./AdminLogin";
+import { deconnexion } from "@/lib/deconnexion";
 import { Navbar } from "./Navbar";
 import { CumulativeChart, calculateBreakEvenMonth } from "./CumulativeChart";
 import type { CumulativeMonthData } from "./CumulativeChart";
@@ -360,6 +361,7 @@ function FinancesContent({
             </Link>
             <button
               onClick={() => {
+                deconnexion(token);
                 sessionStorage.removeItem("admin-token");
                 setToken(null);
               }}

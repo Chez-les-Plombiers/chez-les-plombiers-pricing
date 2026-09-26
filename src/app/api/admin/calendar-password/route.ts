@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { getCalendarPassword, setCalendarPassword } from "@/lib/kv";
+import { estAdmin } from "@/lib/auth";
 
 export async function GET(request: Request) {
-  const auth = request.headers.get("Authorization");
-  if (auth !== process.env.ADMIN_PASSWORD) {
+  if (!(await estAdmin(request))) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 
@@ -14,8 +14,7 @@ export async function GET(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const auth = request.headers.get("Authorization");
-  if (auth !== process.env.ADMIN_PASSWORD) {
+  if (!(await estAdmin(request))) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 

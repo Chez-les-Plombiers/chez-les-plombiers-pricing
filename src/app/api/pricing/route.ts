@@ -4,6 +4,7 @@ import { getAllOverrides, setOverride } from "@/lib/kv";
 import { getVenueAvailability } from "@/lib/google-calendar";
 import { getVenue, isVenueSlug, DEFAULT_VENUE, type VenueSlug } from "@/lib/venues";
 import type { PricingOverride } from "@/types";
+import { estAdmin } from "@/lib/auth";
 
 /** Lieu demandé via `?venue=`, L'ATELIER par défaut (compatibilité historique). */
 function venueFromRequest(request: Request): VenueSlug | null {
@@ -67,8 +68,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const auth = request.headers.get("Authorization");
-    if (auth !== process.env.ADMIN_PASSWORD) {
+    if (!(await estAdmin(request))) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
     }
 

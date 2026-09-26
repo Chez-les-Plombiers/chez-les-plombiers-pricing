@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { getChargesPostes, setChargesPostes } from "@/lib/kv";
 import { DEFAULT_CHARGES_POSTES } from "@/lib/finance-defaults";
+import { estAdmin } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const token = request.headers.get("Authorization");
-  if (token !== process.env.ADMIN_PASSWORD) {
+  if (!(await estAdmin(request))) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 
@@ -18,8 +18,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = request.headers.get("Authorization");
-  if (!auth || auth !== process.env.ADMIN_PASSWORD) {
+  if (!(await estAdmin(request))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

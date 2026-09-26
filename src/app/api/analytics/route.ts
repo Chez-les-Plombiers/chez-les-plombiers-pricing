@@ -3,6 +3,7 @@ import { trackView, getAnalytics, getAllQuotes } from "@/lib/kv";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { isVenueSlug, DEFAULT_VENUE, type VenueSlug } from "@/lib/venues";
 import { getISODayOfWeek, getMonthNameShortFR } from "@/lib/date-utils";
+import { estAdmin } from "@/lib/auth";
 
 export async function POST(request: Request) {
   try {
@@ -45,8 +46,7 @@ const WEEKDAY_LABELS: Record<number, string> = {
  */
 export async function GET(request: Request) {
   try {
-    const auth = request.headers.get("Authorization");
-    if (auth !== process.env.ADMIN_PASSWORD) {
+    if (!(await estAdmin(request))) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
     }
 

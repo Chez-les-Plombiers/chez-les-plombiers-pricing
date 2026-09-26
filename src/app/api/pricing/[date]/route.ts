@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { setOverride, deleteOverride } from "@/lib/kv";
 import type { PricingOverride } from "@/types";
 import { isVenueSlug, DEFAULT_VENUE, type VenueSlug } from "@/lib/venues";
+import { estAdmin } from "@/lib/auth";
 
 /** Lieu ciblé via `?venue=`, L'ATELIER par défaut. */
 function venueFromRequest(request: Request): VenueSlug | null {
@@ -15,8 +16,7 @@ export async function PUT(
   { params }: { params: Promise<{ date: string }> }
 ) {
   try {
-    const auth = request.headers.get("Authorization");
-    if (auth !== process.env.ADMIN_PASSWORD) {
+    if (!(await estAdmin(request))) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
     }
 
@@ -50,8 +50,7 @@ export async function DELETE(
   { params }: { params: Promise<{ date: string }> }
 ) {
   try {
-    const auth = request.headers.get("Authorization");
-    if (auth !== process.env.ADMIN_PASSWORD) {
+    if (!(await estAdmin(request))) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
     }
 

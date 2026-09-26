@@ -3,7 +3,7 @@ import type { PricingOverride, QuoteRequest, AnalyticsEvent, FinanceMonth, Charg
 import type { VenueSlug } from "./venues";
 import { buildDefaultYear } from "./finance-defaults";
 
-function getRedis(): Redis | null {
+export function getRedis(): Redis | null {
   const url = process.env.KV_REST_API_URL;
   const token = process.env.KV_REST_API_TOKEN;
   if (!url || !token) return null;
@@ -25,6 +25,60 @@ const QUOTES_KEY = "pricing:quotes";
 const ANALYTICS_KEY = "pricing:analytics";
 const BOOKED_KEY = "pricing:booked";
 const CALENDAR_PASSWORD_KEY = "pricing:calendar-password";
+
+// --- Passkeys (WebAuthn) ---
+// Une passkey identifie un APPAREIL, pas une personne : on en garde donc une
+// liste, chacune avec son libelle, pour pouvoir en retirer une seule.
+//
+// ⚠️ `rpId` est stocke avec la clef. Une passkey est liee au domaine sur
+// lequel elle a ete creee : celle enregistree sur `chezlesplombiers.fr` vaut
+// pour tous ses sous-domaines, celle creee en local ne vaut que sur
+// `localhost`. Les proposer sans filtrer ferait echouer la connexion sans
+// message comprehensible.
+
+const PASSKEYS_KEY = "auth:passkeys";
+
+export interface PasskeyEnregistree {
+  /** identifiant de la clef, en base64url */
+  id: string;
+  publicKey: string; // base64url
+  counter: number;
+  rpId: string;
+  libelle: string;
+  creeeLe: string;
+  vueLe?: string;
+}
+
+export async function getPasskeys(): Promise<PasskeyEnregistree[]> {
+  const redis = getRedis();
+  if (!redis) return [];
+  return (await redis.get<PasskeyEnregistree[]>(PASSKEYS_KEY)) ?? [];
+}
+
+export async function setPasskeys(clefs: PasskeyEnregistree[]): Promise<void> {
+  const redis = getRedis();
+  if (redis) await redis.set(PASSKEYS_KEY, clefs);
+}
+
+// --- Defis WebAuthn ---
+// Un defi ne sert qu'une fois et ne vit que deux minutes : c'est ce qui
+// empeche de rejouer une signature capturee.
+
+const DEFI_KEY = (id: string) => `auth:defi:${id}`;
+
+export async function poserDefi(id: string, defi: string): Promise<void> {
+  const redis = getRedis();
+  if (redis) await redis.set(DEFI_KEY(id), defi, { ex: 120 });
+}
+
+/** Lit le defi ET le consomme — il ne doit jamais servir deux fois. */
+export async function consommerDefi(id: string): Promise<string | null> {
+  const redis = getRedis();
+  if (!redis) return null;
+  const defi = await redis.get<string>(DEFI_KEY(id));
+  if (defi) await redis.del(DEFI_KEY(id));
+  return defi ?? null;
+}
 
 // --- Overrides ---
 

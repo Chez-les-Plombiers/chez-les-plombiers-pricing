@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getBookedDates, setBookedDates } from "@/lib/kv";
+import { estAdmin } from "@/lib/auth";
 
 export async function GET() {
   try {
@@ -15,8 +16,7 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   try {
-    const auth = request.headers.get("Authorization");
-    if (auth !== process.env.ADMIN_PASSWORD) {
+    if (!(await estAdmin(request))) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
     }
 

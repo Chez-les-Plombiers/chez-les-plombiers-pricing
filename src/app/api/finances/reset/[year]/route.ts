@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { resetFinances } from "@/lib/kv";
+import { estAdmin } from "@/lib/auth";
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ year: string }> }
 ) {
-  const token = request.headers.get("Authorization");
-  if (token !== process.env.ADMIN_PASSWORD) {
+  if (!(await estAdmin(request))) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 

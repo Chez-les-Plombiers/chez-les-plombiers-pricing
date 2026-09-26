@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getFinances } from "@/lib/kv";
 import { getPennylaneMonthlyData } from "@/lib/pennylane";
+import { estAdmin } from "@/lib/auth";
 
 const MONTH_NAMES = [
   "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
@@ -21,8 +22,7 @@ function autoStatus(month: number, year: number): string {
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const token = request.headers.get("Authorization");
-  if (token !== process.env.ADMIN_PASSWORD) {
+  if (!(await estAdmin(request))) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
 

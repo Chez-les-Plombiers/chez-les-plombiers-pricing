@@ -226,6 +226,63 @@ Les jours antérieurs à aujourd'hui sont grisés et non cliquables sur le calen
 - Journée complète réservée = cellule disabled `bg-tier-booked/40`
 - La disponibilité est déterminée par Google Calendar (source of truth)
 
+## Authentification de l'administration (26/09/2026)
+
+### Ce qu'il y avait avant, et pourquoi on en est sorti
+`POST /api/admin/auth` renvoyait au navigateur **le mot de passe lui-même** comme jeton,
+gardé en `sessionStorage` et rejoué en en-tête `Authorization`. Pour une personne seule ça
+tient. Mais le secret maître vivait dans le navigateur, ne se périmait jamais, et **ne
+pouvait être révoqué pour personne sans l'être pour tout le monde** — rédhibitoire dès
+qu'on ouvre l'accès aux obligataires, à la banque et au cabinet.
+
+### Sessions — `src/lib/auth.ts`
+- `creerSession(role, origine)` → jeton aléatoire de 32 octets, rangé en KV
+  `auth:session:<jeton>` avec un rôle et **12 h** d'échéance.
+- `estAdmin(request)` : le contrôle que fait chaque route. **Toutes** les routes protégées
+  l'utilisent — ne plus jamais comparer `process.env.ADMIN_PASSWORD` à la main.
+- Le mot de passe reste accepté en secours, en **comparaison à temps constant**, et ouvre
+  désormais une session au lieu d'être le jeton.
+- `DELETE /api/admin/auth` détruit la session côté serveur. Vider `sessionStorage` ne
+  déconnecte personne.
+- ⏳ Les rôles autres qu'`admin` (`lecture`) sont la fondation des accès obligataires /
+  banque / cabinet à venir. Rien ne les émet encore.
+- ⚠️ `/api/webhook/email-lead` garde `ADMIN_PASSWORD` en `X-Webhook-Secret` : c'est un
+  secret de machine à machine, pas une session. Ne pas y toucher.
+
+### Passkeys — Face ID, Touch ID, Windows Hello
+`@simplewebauthn/server` + `/browser`. Clés en KV `auth:passkeys`, défis en `auth:defi:*`
+(120 s, **consommés même en cas d'échec** — c'est ce qui empêche de rejouer une signature).
+
+- `POST /api/admin/passkey/options` — `mode: "enregistrer"` (exige d'être déjà admin) ou
+  `"connecter"` (public).
+- `POST /api/admin/passkey/verify` — même découpage ; la connexion ouvre une session.
+- `GET`/`DELETE /api/admin/passkey` — lister et retirer un appareil.
+- UI : bouton Face ID sur `AdminLogin`, gestion des appareils dans `PasskeyReglages`
+  (bas de `/admin`).
+
+⚠️ **`rpId` vaut `chezlesplombiers.fr`, pas `www.chezlesplombiers.fr`** — voir
+`src/lib/webauthn.ts`. Une passkey n'est valable que pour son `rpId` et ses sous-domaines,
+et l'administration est atteignable par **deux** origines (`www…/tarifs` via le montage
+multi-zones, et `pricing…`). En s'enregistrant sur le domaine racine, la même clé marche
+des deux côtés ; sur `www`, elle ne marcherait que là, **et l'échec serait muet**.
+
+⚠️ **On lit l'en-tête `Origin`, pas `Host`** : derrière la réécriture multi-zones, `Host`
+est celui du déploiement, pas celui que voit le navigateur — et WebAuthn compare avec ce
+que voit le navigateur.
+
+⚠️ **Le compteur d'usage n'est pas une condition** : Apple le laisse à zéro. En faire un
+contrôle bloquerait tous les iPhone au deuxième usage.
+
+⚠️ **C'est la CSP du SITE VITRINE qui s'applique à `/tarifs/*`**, pas celle de cette
+application — vérifié le 26/09/2026 (`curl -I` sur `/tarifs/admin` renvoie la CSP avec
+Elfsight et Axeptio). Sa `Permissions-Policy` ne mentionne pas
+`publickey-credentials-get/create`, qui valent donc `self` : **WebAuthn passe**. Si on
+durcit un jour cette en-tête sur le site vitrine, il faudra les autoriser explicitement.
+
+⚠️ **Dette connue, préexistante** : `AdminClient` et `FinancesDashboard` initialisent leur
+jeton depuis `sessionStorage` dans `useState`, ce qui provoque une erreur d'hydratation à
+chaque chargement (React se rattrape). À corriger en montant le jeton dans un `useEffect`.
+
 ## Pennylane — Facturation & CA
 - **API :** `https://app.pennylane.com/api/external/v2` — auth Bearer token
 - **Endpoint principal :** `GET /customer_invoices` — pagination cursor-based (page_size=100)
