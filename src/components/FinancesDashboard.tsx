@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { CumulativeChart, calculateBreakEvenMonth } from "./CumulativeChart";
 import type { CumulativeMonthData } from "./CumulativeChart";
+import { joursDeLAnnee, cumulJours, CA_MOIS_TOTAL } from "@/lib/jours-vendus";
+import type { MoisJours } from "@/lib/jours-vendus";
 import type {
   FinanceMonthWithPennylane,
   FinanceStatus,
@@ -298,6 +300,15 @@ function FinancesContent({
     );
   }, [data]);
 
+  const jours = useMemo(() => {
+    const serie = joursDeLAnnee(year);
+    if (!serie.length) return null;
+    return {
+      parMois: new Map(serie.map((m) => [m.mois, m])),
+      cumul: cumulJours(year, CA_MOIS_TOTAL[year] ?? []),
+    };
+  }, [year]);
+
   const summaryCards = useMemo(() => {
     if (!filteredData) return null;
     const totalEncaisse = filteredData.reduce(
@@ -444,6 +455,58 @@ function FinancesContent({
           </div>
         )}
 
+        {jours?.cumul && (
+          <div className="mb-6 border border-border bg-card p-4">
+            <div className="mb-2 flex flex-wrap items-baseline gap-x-6 gap-y-1">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-muted">
+                Jours vendus {year}
+              </span>
+              <span className="font-mono text-sm text-foreground">
+                <strong className="text-accent">{jours.cumul.joursVendus}</strong> vendus
+              </span>
+              <span className="font-mono text-sm text-foreground">
+                <strong className="text-accent">{jours.cumul.joursFactures}</strong> facturés
+              </span>
+              {jours.cumul.prixMoyenJour !== null && (
+                <span className="font-mono text-sm text-foreground">
+                  <strong className="text-accent">{formatEur(jours.cumul.prixMoyenJour)}</strong>
+                  {" "}/ jour
+                </span>
+              )}
+              {jours.cumul.couverture !== null && (
+                <span
+                  className={`font-mono text-sm ${jours.cumul.couverture >= 0.9 ? "text-[#5cb87c]" : "text-[#c9a84c]"}`}
+                  title="Part du chiffre d'affaires de l'année rattachée à un jour d'occupation."
+                >
+                  couverture {Math.round(jours.cumul.couverture * 100)} %
+                </span>
+              )}
+            </div>
+            {/*
+              ⚠️ LE CHIFFRE NE VA JAMAIS SANS SA COUVERTURE. Sous 90 %, « jours
+              vendus » et « prix moyen » décrivent l'état du rattachement autant
+              que l'activité : juin 2026 n'est pas un mois creux, c'est un mois
+              non rattaché. L'afficher sans le dire ferait mentir le tableau.
+            */}
+            <p className="text-[11px] leading-relaxed text-muted">
+              {jours.cumul.couverture !== null && jours.cumul.couverture < 0.9 ? (
+                <>
+                  <strong className="text-[#c9a84c]">Chiffres non publiables en l&apos;état.</strong>{" "}
+                  {Math.round((1 - jours.cumul.couverture) * 100)} % du chiffre d&apos;affaires
+                  n&apos;est rattaché à aucun jour — un mois peut donc paraître creux alors
+                  qu&apos;il est seulement mal rattaché. Le rattachement se fait à la main,
+                  dans le référentiel.
+                </>
+              ) : (
+                <>
+                  Le prix moyen se calcule sur les jours <strong className="text-foreground">facturés</strong>,
+                  pas sur les jours vendus — les deux diffèrent, et c&apos;est normal.
+                </>
+              )}
+            </p>
+          </div>
+        )}
+
         {/* Chart placeholder — will be replaced by CumulativeChart */}
         <div className="mb-6 border border-border bg-card p-5">
           <div className="mb-4 flex items-center justify-between">
@@ -528,6 +591,12 @@ function FinancesContent({
                   <th className="border-b border-border px-3.5 py-2.5 text-right font-mono text-[10px] uppercase tracking-wider text-[#5cb87c]">
                     CA
                   </th>
+                  <th
+                    className="border-b border-border px-3.5 py-2.5 text-right font-mono text-[10px] uppercase tracking-wider text-muted"
+                    title="Jours facturés / jours vendus. La couleur dit la couverture du mois."
+                  >
+                    Jours
+                  </th>
                   <th className="border-b border-border px-3.5 py-2.5 text-right font-mono text-[10px] uppercase tracking-wider text-muted">
                     CA Prévi.
                   </th>
@@ -545,6 +614,7 @@ function FinancesContent({
               </thead>
               <tbody>
                 <MonthRows
+                  joursParMois={jours?.parMois}
                   data={filteredData ?? []}
                   allData={data}
                   year={year}
@@ -624,6 +694,7 @@ function LegendDot({ color, label }: { color: string; label: string }) {
 
 function MonthRows({
   data,
+  joursParMois,
   allData,
   year,
   expandedInvoices,
@@ -632,6 +703,7 @@ function MonthRows({
   onPatch,
 }: {
   data: FinanceMonthWithPennylane[];
+  joursParMois: Map<number, MoisJours> | undefined;
   allData: FinanceMonthWithPennylane[];
   year: number;
   expandedInvoices: Set<number>;
@@ -662,6 +734,7 @@ function MonthRows({
 
         return (
           <MonthRow
+            j={joursParMois?.get(m.month)}
             key={m.month}
             m={m}
             status={status}
@@ -682,6 +755,7 @@ function MonthRows({
 
 function MonthRow({
   m,
+  j,
   status,
   cumulRes,
   res,
@@ -693,6 +767,7 @@ function MonthRow({
   onPatch,
 }: {
   m: FinanceMonthWithPennylane;
+  j: MoisJours | undefined;
   status: FinanceStatus;
   cumulRes: number;
   res: number;
@@ -750,6 +825,34 @@ function MonthRow({
             <span className="font-mono text-[13px] text-muted">—</span>
           )}
         </td>
+        {/*
+          Jours du mois. « facturés / vendus » et non l'inverse : c'est le
+          nombre de gauche qui porte le CA, et ce sont les deux ensemble qui
+          disent si le mois est faible ou seulement mal rattaché.
+        */}
+        <td className="px-3.5 py-2.5 text-right">
+          {j ? (
+            <span
+              className={`font-mono text-[13px] ${
+                j.couverture === null
+                  ? "text-muted"
+                  : j.couverture >= 0.9
+                    ? "text-foreground"
+                    : "text-[#c9a84c]"
+              }`}
+              title={
+                j.couverture === null
+                  ? `${j.joursVendus} jour(s) occupé(s), aucune facture rattachée.`
+                  : `Couverture ${Math.round(j.couverture * 100)} % du CA du mois.`
+              }
+            >
+              {j.joursFactures || "—"}
+              <span className="text-[10px] text-muted"> / {j.joursVendus}</span>
+            </span>
+          ) : (
+            <span className="font-mono text-[13px] text-muted">—</span>
+          )}
+        </td>
         {/* CA Prévisionnel — BUG #4: hidden when real CA exists */}
         <td className="px-3.5 py-2.5 text-right">
           {showPrev ? (
@@ -782,7 +885,7 @@ function MonthRow({
       </tr>
       {isInvExp && m.invoices.length > 0 && (
         <tr className="border-b border-border">
-          <td colSpan={8} className="bg-[rgba(0,0,0,0.25)] px-4 py-3">
+          <td colSpan={9} className="bg-[rgba(0,0,0,0.25)] px-4 py-3">
             <InvoiceDrawer
               invoices={m.invoices}
               currentMonth={m.month}

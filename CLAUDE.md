@@ -433,9 +433,20 @@ suit ne décrit que l'implémentation.
   celle du paiement : **non comparable en l'état** avec le bloc A. Une série mensuelle
   encaissée 2025 est dérivable des liens pièce↔mouvement du référentiel, dont **47 sur 81
   sont encore `a_valider`**. À reprendre quand le fil AUDIT les aura validés.
-- **Jours vendus** (spec §6) : rattachement facture → évènement couvert à 100 % sur 2025
-  mais **4 % sur 2026**. L'indicateur, et le prix moyen par jour avec lui, ne peut être
-  affiché que pour 2025.
+- ✅ **Jours vendus — LIVRÉ le 27/09/2026** par le fil AUDIT, dans
+  `src/lib/jours-vendus.ts`. Source : `clp-finance/reports/serie-mensuelle-jours-ca.tsv`.
+  ⚠️ **Le prix moyen se divise par `joursFactures`, jamais par `joursVendus`** — sur 2026,
+  114 jours vendus mais 58 facturés ; diviser par 114 donnerait 1 144 €/jour au lieu de
+  2 249 €, et c'est le calcul qu'on fait par défaut.
+  ⚠️ **`joursFactures` peut dépasser `joursVendus`** : une facture de 2,5 jours couvre
+  trois journées là où le calendrier n'en porte qu'une. C'est un signal, pas un bug.
+  🔴 **Ne jamais afficher les jours sans la couverture.** Juin 2026 est à 10 % : ce n'est
+  pas un mois creux, c'est un mois non rattaché. 2025 est à 98 % et publiable, 2026 à 62 %
+  ne l'est pas — le bandeau le dit en toutes lettres.
+  ⚠️ **Divergence relevée** : la note d'accompagnement du fil AUDIT annonce 55 jours /
+  126 920 € / 2 308 € pour 2026, là où le TSV et le rapport détaillé disent 58 / 130 420 €
+  / 2 248,62 €. Les deux sorties du script concordent ; c'est la note qui diverge. On suit
+  le TSV.
 
 ### Graphique
 - Courbe cumul : trait vert réalisé + pointillés dorés projection
