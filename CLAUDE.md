@@ -334,6 +334,23 @@ durcit un jour cette en-tête sur le site vitrine, il faudra les autoriser expli
 jeton depuis `sessionStorage` dans `useState`, ce qui provoque une erreur d'hydratation à
 chaque chargement (React se rattrape). À corriger en montant le jeton dans un `useEffect`.
 
+## Retour vers la fiche du lieu, depuis les tarifs (28/09/2026)
+
+Étienne : « on me demande les dispos, j'envoie le lien des tarifs, et depuis cette page il
+n'y a rien pour revenir aux fiches des lieux ». On arrive souvent ici par un lien direct,
+sans être passé par le site — rien ne disait à quoi ressemble le lieu dont on lit le prix.
+
+Un lien **« Voir la fiche du lieu → »** sur la ligne du titre, dans `VenuePageBody`.
+
+⚠️ **PAS DANS LES CARTES DU SÉLECTEUR**, même si c'est là qu'on y pense d'abord : chaque
+carte **est déjà un lien** (celui qui change de lieu). Un lien dans un lien n'est pas du
+HTML valide, et le clic deviendrait imprévisible — change-t-on de lieu, ou quitte-t-on les
+tarifs ? Sous le nom du lieu affiché, il n'y a aucune ambiguïté.
+
+⚠️ **Un `<a>` nu, jamais `next/link`** : `basePath: "/tarifs"` enverrait sur
+`/tarifs/atelier` — une page de la zone tarifs — au lieu de `/atelier`, la fiche sur le
+site. Même piège que dans `Navbar`, et l'échec serait silencieux.
+
 ## Pennylane — Facturation & CA
 - **API :** `https://app.pennylane.com/api/external/v2` — auth Bearer token
 - **Endpoint principal :** `GET /customer_invoices` — pagination cursor-based (page_size=100)
