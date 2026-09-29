@@ -141,9 +141,35 @@ export async function sendQuoteNotification(
 
   const fromAddress = process.env.RESEND_FROM_EMAIL || "Calendrier CLP <notifications@chezlesplombiers.fr>";
 
+  /*
+   * ── « RÉPONDRE » DOIT ÉCRIRE AU CLIENT, PAS AU SITE ──────────────────────
+   *
+   * Demande du fil MAILS, 28/09/2026. La notification part de
+   * `notifications@chezlesplombiers.fr` : répondre depuis Gmail écrivait donc
+   * à une boîte technique. Étienne et Céline recopiaient l'adresse du client
+   * à la main, et la conversation se détachait de la demande.
+   *
+   * ⚠️ ON NE TOUCHE PAS À `from`. Le DMARC du domaine est en `p=reject` :
+   * expédier au nom du client ferait REJETER le mail, pas tomber en spam.
+   * Seul `Reply-To` bouge — il n'est pas authentifié, donc sans effet DMARC.
+   *
+   * ⚠️ `replyTo` en camelCase ici, parce qu'on passe par le SDK. Le site
+   * vitrine appelle l'API REST directement et doit écrire `reply_to`. Les
+   * deux graphies existent dans les types Resend ; se tromper est silencieux.
+   *
+   * ⚠️ ON N'ENVOIE L'ADRESSE QUE SI ELLE TIENT DEBOUT. Une valeur invalide
+   * ferait rejeter tout l'envoi par Resend — et on perdrait la notification
+   * elle-même, qui est bien plus précieuse que le confort de la réponse.
+   */
+  const emailClient = quote.email?.trim();
+  const replyTo = emailClient && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailClient)
+    ? emailClient
+    : undefined;
+
   const { error } = await resend.emails.send({
     from: fromAddress,
     to: NOTIFICATION_RECIPIENTS,
+    ...(replyTo ? { replyTo } : {}),
     subject,
     html,
   });
