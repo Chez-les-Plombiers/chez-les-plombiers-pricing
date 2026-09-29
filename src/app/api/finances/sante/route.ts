@@ -33,11 +33,40 @@ const BASE = "https://app.pennylane.com/api/external/v2";
 /** Date d'expiration choisie à la création du jeton, le 28/09/2026. */
 const EXPIRATION_ECRITURE = "2026-10-27";
 
+/**
+ * Ce qu'on peut dire d'une clé sans la révéler.
+ *
+ * ⚠️ RÉFLEXE DE DIAGNOSTIC MAISON, ÉCRIT DANS LE `CLAUDE.md` APRÈS L'INCIDENT
+ * DU 26/08/2026 : plusieurs variables d'environnement avaient été collées
+ * avec un `\n` littéral en fin de valeur. Les clés étaient parfaitement
+ * valides, mais les API les rejetaient — et on a cherché du côté d'une
+ * révocation pendant cinq jours. **Comparer la longueur à celle attendue est
+ * ce qui a fini par trancher.**
+ *
+ * Une longueur et la présence d'espaces ne sont pas des secrets. La valeur
+ * n'est jamais renvoyée, ni journalisée.
+ */
+function empreinte(cle: string | undefined) {
+  if (!cle) return null;
+  return {
+    longueur: cle.length,
+    longueurApresNettoyage: cle.trim().length,
+    espacesAutour: cle !== cle.trim(),
+    retourLigne: /[\r\n]/.test(cle),
+    antislashN: cle.includes("\\n"),
+    debut: cle.slice(0, 4),
+  };
+}
+
 async function sonde(cle: string | undefined, chemin: string) {
   if (!cle) return { ok: false, detail: "clé absente" };
+  /* ⚠️ On nettoie AVANT d'envoyer : un espace ou un retour à la ligne collé
+     à la valeur suffit à faire refuser une clé par ailleurs valide. Si le
+     nettoyage suffit, `empreinte` dira que la valeur stockée était sale. */
+  const propre = cle.trim();
   try {
     const r = await fetch(`${BASE}${chemin}`, {
-      headers: { Authorization: `Bearer ${cle}`, Accept: "application/json" },
+      headers: { Authorization: `Bearer ${propre}`, Accept: "application/json" },
       cache: "no-store",
     });
     if (r.ok) return { ok: true };
@@ -79,10 +108,12 @@ export async function GET(request: Request) {
   return NextResponse.json({
     lecture: {
       presente: Boolean(lecture),
+      empreinte: empreinte(lecture),
       ressources: Object.fromEntries(resLecture),
     },
     ecriture: {
       presente: Boolean(ecriture),
+      empreinte: empreinte(ecriture),
       ressources: Object.fromEntries(resEcriture),
       expireLe: EXPIRATION_ECRITURE,
       joursRestants: jours,
