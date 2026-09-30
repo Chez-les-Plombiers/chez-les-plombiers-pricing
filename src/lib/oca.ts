@@ -40,7 +40,7 @@ export const DUREE_ANNEES = 5;
 
 /**
  * 🔴 LE DÉLAI DE GRÂCE CONTRACTUEL — personne ne l'avait relevé avant le
- * 30/09/2026, et il déplace la date à partir de laquelle un porteur peut
+ * 30/09/2026, et il décide de la date à partir de laquelle un porteur peut
  * réclamer des intérêts de retard.
  *
  * Décisions du Président du 19/07/2024, « Paiement des intérêts » :
@@ -49,23 +49,31 @@ export const DUREE_ANNEES = 5;
  *     plus tard, le dernier jour ouvré du trimestre civil en cours suivant
  *     ladite date anniversaire** »
  *
- * L'anniversaire tombe le 24 septembre, dans le troisième trimestre : la
- * société a donc jusqu'au **dernier jour ouvré du 30 septembre** pour payer
- * sans être en défaut. Compter le retard depuis le 24 surfacture la société de
- * six jours par échéance.
+ * La clause se lit de deux façons, et l'écart vaut des centaines d'euros :
+ *   · le trimestre qui CONTIENT l'anniversaire (T3) → 30 septembre ;
+ *   · le trimestre SUIVANT (T4) → 31 décembre.
  *
- * ⚠️ LECTURE RETENUE, ET ELLE EST LA MOINS FAVORABLE À LA SOCIÉTÉ. « le
- * trimestre civil en cours suivant ladite date anniversaire » se lit aussi
- * comme le trimestre SUIVANT — le quatrième — ce qui repousserait l'échéance au
- * 31 décembre et effacerait presque tout le retard de l'exercice en cours. On
- * retient le trimestre qui CONTIENT l'anniversaire, parce qu'en cas de doute on
- * ne s'octroie pas le délai le plus long contre son créancier. À faire trancher
- * par le cabinet : l'écart se chiffre en centaines d'euros.
+ * ✅ ÉTIENNE A TRANCHÉ LE 30/09/2026 POUR LE 31 DÉCEMBRE : « les intérêts que
+ * j'aurais dû payer maintenant, je considère que si je les paye entre
+ * maintenant et la fin de l'année, il n'y a pas d'intérêt de retard. Faut pas
+ * non plus exagérer. » C'est sa décision, et elle est défendable — « le
+ * trimestre civil suivant ladite date anniversaire » désigne bien le T4.
+ *
+ * ⚠️ ELLE S'APPLIQUE AUSSI AUX ÉCHÉANCES ANCIENNES, et il faut le savoir : le
+ * retard de l'échéance 2025 court désormais du 31/12/2025, non du 30/09/2025.
+ * Ce n'est pas une faveur qu'on s'accorde après coup, c'est la même lecture du
+ * contrat appliquée partout. L'inverse — une lecture par échéance selon ce qui
+ * arrange — serait indéfendable devant un porteur.
+ *
+ * ⚠️ À FAIRE CONFIRMER PAR LE CABINET. Si Jean-Michel Portier retient le T3,
+ * repasser `TRIMESTRES_DE_GRACE` à 0 suffit.
  */
+const TRIMESTRES_DE_GRACE = 1;
+
 function finDuDelaiDeGrace(anniversaire: string): string {
   const [a, m] = anniversaire.split("-").map(Number);
-  // Dernier jour du trimestre civil contenant l'anniversaire.
-  const moisFin = Math.ceil(m / 3) * 3;
+  // Dernier jour du trimestre retenu (celui de l'anniversaire, plus le décalage).
+  const moisFin = (Math.ceil(m / 3) + TRIMESTRES_DE_GRACE) * 3;
   const dernier = new Date(Date.UTC(a, moisFin, 0));
   // Puis on recule au dernier jour OUVRÉ : samedi → vendredi, dimanche → vendredi.
   const jour = dernier.getUTCDay();
@@ -115,6 +123,16 @@ export interface Versement {
 }
 
 export interface Echeance {
+  /**
+   * « Année 1 », « Année 2 »… ou « Jusqu'à la cession » pour un reliquat.
+   *
+   * ⚠️ C'EST CE QUE LIT LE PORTEUR, et c'est délibérément grossier. Étienne,
+   * 30/09/2026 : « les intérêts avec les dates, c'est pas très clair […] en
+   * gros, il faut calculer combien d'années sont passées : première année payé
+   * pas payé, deuxième année payé pas payé ». La table par dates était juste
+   * mais illisible — un obligataire veut savoir de quelle ANNÉE on parle.
+   */
+  libelle: string;
   /** AAAA-MM-JJ — anniversaire, ou date de cession pour un reliquat. */
   date: string;
   /**
@@ -203,14 +221,19 @@ function periodes(ligne: LigneOca, aujourdhui: string) {
     jusqua: string;
     /** Faux pour un reliquat de cession — voir le délai de grâce plus bas. */
     anniversaire: boolean;
+    libelle: string;
   }[] = [];
   let curseur = debut;
   for (const b of bornes) {
+    const estAnniv = b !== fin;
     out.push({
       date: b,
       depuis: curseur,
       jusqua: b,
-      anniversaire: b !== fin,
+      anniversaire: estAnniv,
+      libelle: estAnniv
+        ? `Année ${bornes.indexOf(b) + 1}`
+        : "Jusqu'à la cession",
     });
     curseur = b;
   }
@@ -241,7 +264,13 @@ export function calculerPosition(
   // Toutes les périodes de toutes les lignes, fusionnées par date d'exigibilité.
   const parDate = new Map<
     string,
-    { jours: number; brut: number; libelles: string[]; anniversaire: boolean }
+    {
+      jours: number;
+      brut: number;
+      libelles: string[];
+      anniversaire: boolean;
+      libelle: string;
+    }
   >();
   for (const ligne of lignes) {
     for (const p of periodes(ligne, aujourdhui)) {
@@ -250,7 +279,13 @@ export function calculerPosition(
       const brut = (ligne.nominal * TAUX_ANNUEL * n) / BASE_JOURS;
       const e =
         parDate.get(p.date) ??
-        { jours: 0, brut: 0, libelles: [], anniversaire: p.anniversaire };
+        {
+          jours: 0,
+          brut: 0,
+          libelles: [],
+          anniversaire: p.anniversaire,
+          libelle: p.libelle,
+        };
       e.jours = Math.max(e.jours, n);
       e.brut += brut;
       e.libelles.push(`${fr(p.depuis)} → ${fr(p.jusqua)}`);
@@ -263,7 +298,13 @@ export function calculerPosition(
   const totalVerse = disponible;
 
   const echeances: Echeance[] = dates.map((date) => {
-    const { jours: n, brut, libelles, anniversaire: estAnniv } = parDate.get(date)!;
+    const {
+      jours: n,
+      brut,
+      libelles,
+      anniversaire: estAnniv,
+      libelle,
+    } = parDate.get(date)!;
     const retenue = brut * tauxRetenue;
     const net = brut - retenue;
     const regle = Math.min(disponible, net);
@@ -278,6 +319,7 @@ export function calculerPosition(
       restant > 0 ? Math.max(0, jours(exigibleLe, aujourdhui)) : 0;
 
     return {
+      libelle,
       date,
       exigibleLe,
       periode: [...new Set(libelles)].join(" · "),

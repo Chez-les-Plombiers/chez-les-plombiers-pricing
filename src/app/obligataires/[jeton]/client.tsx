@@ -318,6 +318,9 @@ function VotrePosition({
 
   const aRetenue = position.totalRetenue > 0;
   const aRegler = position.resteDuAvecRetard > 0.5;
+  // La dernière échéance échue porte la date limite de paiement la plus
+  // récente — c'est celle qui intéresse un porteur qui attend son virement.
+  const derniereEcheance = position.echeances[position.echeances.length - 1];
 
   return (
     <section className="mt-10 rounded-lg border border-accent/40 bg-card p-5">
@@ -352,57 +355,79 @@ function VotrePosition({
             </p>
           </div>
         )}
+        {derniereEcheance && (
+          <div>
+            <p className="font-mono text-[9px] uppercase tracking-wider text-muted">
+              À régler au plus tard le
+            </p>
+            <p className="font-mono text-lg font-semibold tabular-nums">
+              {jourMois(derniereEcheance.exigibleLe)}
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* Les échéances échues */}
+      {/* Les échéances échues, année par année */}
       <div className="mt-4 overflow-x-auto">
-        <table className="w-full min-w-[440px] border-collapse text-sm">
+        <table className="w-full min-w-[420px] border-collapse text-sm">
           <thead>
             <tr>
-              <Th className="text-left">Échéance</Th>
+              <Th className="text-left">Période</Th>
               {aRetenue && <Th className="text-right">Brut</Th>}
               {aRetenue && <Th className="text-right">Retenue 30 %</Th>}
               <Th className="text-right">{aRetenue ? "Net dû" : "Dû"}</Th>
               <Th className="text-right">Reçu</Th>
-              <Th className="text-right">Restant</Th>
+              <Th className="text-right">État</Th>
             </tr>
           </thead>
           <tbody>
-            {position.echeances.map((e) => (
-              <tr key={e.date} className="border-b border-border/60">
-                <td className="py-2.5 pr-3">
-                  {jourMois(e.date)}
-                  {e.jours < 360 && (
-                    <span className="ml-2 font-mono text-[9px] uppercase tracking-wider text-muted">
-                      {e.jours} j
-                    </span>
+            {position.echeances.map((e) => {
+              const solde = e.restant <= 0.5;
+              const entame = e.regle > 0.5;
+              return (
+                <tr key={e.date} className="border-b border-border/60">
+                  <td className="py-2.5 pr-3">
+                    <div>{e.libelle}</div>
+                    {/* La période en clair, en second rang : c'est l'année qui
+                        parle au lecteur, la date sert à lever un doute. */}
+                    <div className="font-mono text-[10px] text-muted">
+                      {e.periode}
+                    </div>
+                  </td>
+                  {aRetenue && (
+                    <td className="py-2.5 text-right font-mono tabular-nums text-muted">
+                      {euros(e.brut)}
+                    </td>
                   )}
-                </td>
-                {aRetenue && (
-                  <td className="py-2.5 text-right font-mono tabular-nums text-muted">
-                    {euros(e.brut)}
+                  {aRetenue && (
+                    <td className="py-2.5 text-right font-mono tabular-nums text-muted">
+                      −{euros(e.retenue)}
+                    </td>
+                  )}
+                  <td className="py-2.5 text-right font-mono tabular-nums">
+                    {euros(e.net)}
                   </td>
-                )}
-                {aRetenue && (
                   <td className="py-2.5 text-right font-mono tabular-nums text-muted">
-                    −{euros(e.retenue)}
+                    {euros(e.regle)}
                   </td>
-                )}
-                <td className="py-2.5 text-right font-mono tabular-nums">
-                  {euros(e.net)}
-                </td>
-                <td className="py-2.5 text-right font-mono tabular-nums text-muted">
-                  {euros(e.regle)}
-                </td>
-                <td
-                  className={`py-2.5 text-right font-mono tabular-nums ${
-                    e.restant > 0.5 ? "text-[#d98080]" : "text-[#5cb87c]"
-                  }`}
-                >
-                  {euros(e.restant)}
-                </td>
-              </tr>
-            ))}
+                  <td className="py-2.5 text-right">
+                    {solde ? (
+                      <span className="font-mono text-[10px] uppercase tracking-wider text-[#5cb87c]">
+                        Payé
+                      </span>
+                    ) : (
+                      <span
+                        className={`font-mono text-[10px] uppercase tracking-wider ${
+                          entame ? "text-accent" : "text-[#d98080]"
+                        }`}
+                      >
+                        {entame ? "Partiel" : "Non payé"} · {euros(e.restant)}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -454,7 +479,10 @@ function VotrePosition({
           </>
         ) : null}
         Intérêts calculés au taux de {(position.taux * 100).toFixed(0)} % l&apos;an,
-        base 365 jours, non capitalisés, à compter du 24 septembre 2024.
+        base 365 jours, non capitalisés, à compter du 24 septembre 2024 — date
+        de souscription au sens du contrat. Chaque annuité est exigible à la
+        date anniversaire, et payable au plus tard le dernier jour ouvré du
+        trimestre civil suivant.
       </p>
     </section>
   );
