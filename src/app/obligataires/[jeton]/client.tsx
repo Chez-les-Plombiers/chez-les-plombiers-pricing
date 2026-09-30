@@ -206,7 +206,7 @@ export function PageObligataire({ jeton }: { jeton: string }) {
           {/*
             ⚠️ CETTE MENTION N'EST PAS UNE PRÉCAUTION D'AVOCAT, C'EST UNE
             CORRECTION DE LECTURE. Le tableau montre les charges réellement
-            décaissées par CLP. Or ARCHIBALD & ABRAHAM, société sœur, porte des
+            décaissées par CLP. Or ARCHIBALD & ABRAHAM, sa société MÈRE, porte des
             charges dont CLP bénéficie — le fil COMPTA CLP en a relevé pour
             environ 66 000 € sur 2026 : honoraires du cabinet, rémunération
             administrative, télécoms, maintenance réseau. Sans convention de
@@ -229,7 +229,7 @@ export function PageObligataire({ jeton }: { jeton: string }) {
           */}
           <p className="mt-3 text-xs leading-relaxed text-muted">
             Certaines charges bénéficiant à Chez les Plombiers sont portées par{" "}
-            <strong>Archibald &amp; Abraham</strong>, société sœur : honoraires
+            <strong>Archibald &amp; Abraham</strong>, sa société mère : honoraires
             du cabinet comptable, rémunération administrative, une partie des
             frais de télécommunications et de maintenance réseau. Elles ne
             figurent pas dans les charges ci-dessus. Le compte courant entre les

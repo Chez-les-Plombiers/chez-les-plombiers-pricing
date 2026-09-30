@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AdminShell } from "@/components/AdminShell";
 import { apiUrl } from "@/lib/base-path";
 import type { Porteur } from "@/lib/obligataires";
-import type { Position } from "@/lib/oca";
+import { DATE_SOUSCRIPTION, type Position } from "@/lib/oca";
 
 /**
  * L'écran où Étienne tient ses porteurs d'OCA et leurs liens.
@@ -233,7 +233,7 @@ function Contenu({ token }: { token: string }) {
                     id: "",
                     nom: "",
                     type: "morale",
-                    lignes: [{ nominal: 0 }],
+                    lignes: [{ nominal: 0, depuis: DATE_SOUSCRIPTION }],
                     versements: [],
                     jeton: null,
                     vuLe: null,
@@ -295,14 +295,6 @@ function Fiche({
           <option value="morale">Société</option>
           <option value="physique">Personne physique</option>
         </select>
-        <label className="flex items-center gap-1.5 text-[11px] text-muted">
-          <input
-            type="checkbox"
-            checked={p.conteste ?? false}
-            onChange={(e) => onMaj({ conteste: e.target.checked })}
-          />
-          en discussion
-        </label>
         <button
           onClick={onSupprimer}
           className="ml-auto font-mono text-[10px] uppercase tracking-wider text-muted transition-colors hover:text-[#d95f5f]"
@@ -337,28 +329,51 @@ function Fiche({
                 placeholder="nominal"
                 className="w-28 border border-border bg-background px-2 py-1 text-right font-mono tabular-nums"
               />
-              <span className="text-muted">€ · intérêts du</span>
+              <span className="text-muted">€ · intérêts à partir du</span>
+              {/* ⚠️ PRÉ-REMPLI, JAMAIS VIDE. Étienne, 30/09/2026 : « je ne sais
+                  pas remplir les dates et je ne vais pas le faire pour tous les
+                  obligataires ». Un champ vide valait implicitement la date de
+                  souscription — exact, mais illisible, et personne ne pouvait
+                  le deviner. La valeur par défaut est désormais affichée. */}
               <input
                 type="date"
-                value={l.depuis ?? ""}
+                value={l.depuis ?? DATE_SOUSCRIPTION}
                 onChange={(e) => {
                   const lignes = [...p.lignes];
-                  lignes[k] = { ...l, depuis: e.target.value || undefined };
+                  lignes[k] = {
+                    ...l,
+                    depuis: e.target.value || DATE_SOUSCRIPTION,
+                  };
                   onMaj({ lignes });
                 }}
                 className="border border-border bg-background px-2 py-1"
               />
-              <span className="text-muted">au</span>
-              <input
-                type="date"
-                value={l.jusqua ?? ""}
-                onChange={(e) => {
-                  const lignes = [...p.lignes];
-                  lignes[k] = { ...l, jusqua: e.target.value || undefined };
-                  onMaj({ lignes });
-                }}
-                className="border border-border bg-background px-2 py-1"
-              />
+              <span className="text-muted">
+                {l.jusqua ? "jusqu'au" : "· toujours détenue"}
+              </span>
+              {l.jusqua ? (
+                <input
+                  type="date"
+                  value={l.jusqua}
+                  onChange={(e) => {
+                    const lignes = [...p.lignes];
+                    lignes[k] = { ...l, jusqua: e.target.value || undefined };
+                    onMaj({ lignes });
+                  }}
+                  className="border border-border bg-background px-2 py-1"
+                />
+              ) : (
+                <button
+                  onClick={() => {
+                    const lignes = [...p.lignes];
+                    lignes[k] = { ...l, jusqua: DATE_SOUSCRIPTION };
+                    onMaj({ lignes });
+                  }}
+                  className="font-mono text-[10px] uppercase tracking-wider text-muted transition-colors hover:text-accent"
+                >
+                  cette ligne a été cédée
+                </button>
+              )}
               <button
                 onClick={() =>
                   onMaj({ lignes: p.lignes.filter((_, j) => j !== k) })
@@ -371,15 +386,16 @@ function Fiche({
           ))}
         </div>
         <button
-          onClick={() => onMaj({ lignes: [...(p.lignes ?? []), { nominal: 0 }] })}
+          onClick={() => onMaj({ lignes: [...(p.lignes ?? []), { nominal: 0, depuis: DATE_SOUSCRIPTION }] })}
           className="mt-1.5 font-mono text-[10px] uppercase tracking-wider text-muted transition-colors hover:text-accent"
         >
           + ligne
         </button>
         <p className="mt-1 text-[10px] leading-relaxed text-muted">
-          Dates vides = souscription d&apos;origine (24/09/2024), sans fin. Une
-          ligne <strong>cédée</strong> porte une date de fin ; une quote-part
-          <strong> reçue</strong> porte une date de début.
+          La date de départ est celle de la souscription d&apos;origine — à
+          changer seulement pour une <strong>quote-part reçue par cession</strong>,
+          qui démarre le jour de la cession. Cliquez sur
+          «&nbsp;cette ligne a été cédée&nbsp;» pour arrêter les intérêts à une date.
         </p>
       </div>
 
