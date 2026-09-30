@@ -206,21 +206,36 @@ export function PageObligataire({ jeton }: { jeton: string }) {
           {/*
             ⚠️ CETTE MENTION N'EST PAS UNE PRÉCAUTION D'AVOCAT, C'EST UNE
             CORRECTION DE LECTURE. Le tableau montre les charges réellement
-            décaissées par CLP. Or deux postes dont la société bénéficie sont
-            payés par Archibald & Abraham : les honoraires du cabinet
-            (2 192,33 €/mois sur le CIC d'AAA, vérifié par le fil COMPTA CLP le
-            30/09/2026) et le salaire de Céline. Un lecteur qui voit un compte
-            d'exploitation sans la moindre ligne de comptabilité ni de
-            personnel se demandera ce qu'on lui cache — et il aura raison.
-            Le taire rendrait le solde d'exploitation flatteur sans le dire.
+            décaissées par CLP. Or ARCHIBALD & ABRAHAM, société sœur, porte des
+            charges dont CLP bénéficie — le fil COMPTA CLP en a relevé pour
+            environ 66 000 € sur 2026 : honoraires du cabinet, rémunération
+            administrative, télécoms, maintenance réseau. Sans convention de
+            refacturation, et sans refacturation constatée. Un lecteur qui voit
+            un compte d'exploitation sans la moindre ligne de comptabilité ni
+            de personnel se demandera ce qu'on lui cache, et il aura raison.
+
+            🔴 ON NE PUBLIE PAS LES 66 000 €. C'est un repérage par mots-clés
+            sur les libellés bancaires, pas un audit : une partie des salaires
+            relève peut-être d'AAA en propre, et les lignes télécoms couvrent
+            les deux sociétés. Publier ce total donnerait une précision qu'il
+            n'a pas. On publie le COMPTE COURANT, qui est au bilan et qui
+            mesure l'accumulation.
+
+            ⚠️ ET ON NE CHIFFRE PAS DE QUOTE-PART. Aucune clé n'est défendable :
+            le cabinet lui-même n'a pas arbitré le sujet, qu'il a classé comme
+            « problématique fiscale à traiter en 2026 » — le même sujet que le
+            bail de L'APPARTEMENT. Un pourcentage inventé serait pire que le
+            silence.
           */}
           <p className="mt-3 text-xs leading-relaxed text-muted">
-            Les charges présentées sont celles <strong>réellement supportées par
-            Chez les Plombiers SAS</strong>. Certaines prestations dont la
-            société bénéficie — honoraires du cabinet comptable, frais de
-            personnel — sont portées par <strong>Archibald &amp; Abraham</strong>,
-            société sœur, et ne figurent donc pas ici. Elles alimentent le compte
-            courant entre les deux sociétés.
+            Certaines charges bénéficiant à Chez les Plombiers sont portées par{" "}
+            <strong>Archibald &amp; Abraham</strong>, société sœur : honoraires
+            du cabinet comptable, rémunération administrative, une partie des
+            frais de télécommunications et de maintenance réseau. Elles ne
+            figurent pas dans les charges ci-dessus. Le compte courant entre les
+            deux sociétés s&apos;élevait à environ 130 000 € au 31 décembre 2025,
+            selon les comptes en cours d&apos;arrêté. La répartition définitive
+            sera fixée avec le cabinet sur l&apos;exercice 2026.
           </p>
 
           {dernierEchu && (
