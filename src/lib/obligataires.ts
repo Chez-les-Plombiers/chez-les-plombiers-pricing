@@ -17,45 +17,71 @@ import { getRedis } from "@/lib/kv";
  *   « juste ajouter la liste pour aller plus vite » : non. Rendre le dépôt
  *   privé ne suffirait pas non plus, l'historique public est déjà indexé.
  *
- * ── CE QUE LA PAGE MONTRE, ET CE QU'ELLE NE MONTRE PAS ──────────────────────
+ * ── CE QUE LA PAGE MONTRE ───────────────────────────────────────────────────
  *
- * Elle montre les comptes de la société. Elle ne montre **aucune créance
- * individuelle**, et ce n'est pas une omission technique : afficher un montant
- * dû reviendrait à le reconnaître, alors que quatre points sont ouverts au
- * 30/09/2026 (source : `ADMIN/COMPTABLES/OCA/CALCUL_OCA_2026_05.xlsx`) :
+ * Les comptes de la société, **et la position du porteur** : ce qui lui est dû,
+ * ce qu'il a reçu, ce qui reste — intérêts de retard compris.
  *
- * 1. **Une cession n'est pas tranchée.** Un souscripteur a cédé la totalité de
- *    sa ligne à trois tiers en février 2026 ; la société envisage de refuser
- *    la cession au titre de l'article 12. Qui porte cette ligne est indécis.
- * 2. **Le brut n'est pas le net.** Les personnes physiques subissent 30 % de
- *    retenue (PFU 12,8 % + prélèvements sociaux 17,2 %) que la société doit
- *    reverser. Annoncer un brut, c'est annoncer 30 % de trop.
- * 3. **Les intérêts de retard courent à 10 %** (art. 4.5), en faveur du
- *    porteur. Un montant affiché sans eux est faux, et faux à la baisse.
- * 4. **Un montant est contesté**, à quelques centaines d'euros près.
+ * 🔴 CE CHIFFRE ENGAGE LA SOCIÉTÉ, ET C'EST VOULU. Étienne, 30/09/2026 :
+ * « oui, et ça me va, je leur dois de l'argent ». La question avait été posée
+ * en sens inverse — la page valant reconnaissance de dette — et tranchée ainsi.
+ * Ne pas « protéger » la société en retirant ce bloc sans le lui redemander.
  *
- * Le jour où ces quatre points seront tranchés, la position individuelle
- * pourra s'ajouter. Pas avant, et pas par défaut.
+ * Trois précautions restent nécessaires, et elles sont tenues par le calcul
+ * (`@/lib/oca`), pas par l'omission :
+ *   · le **brut et le net** sont affichés séparément, parce qu'une personne
+ *     physique subit 30 % de retenue à la source ;
+ *   · les **intérêts de retard** (10 %, art. 4.5) sont comptés, en faveur du
+ *     porteur — les taire donnerait un chiffre faux à la baisse ;
+ *   · une **ligne cédée** s'arrête à la date de cession, et la quote-part reçue
+ *     démarre le même jour. Sans ça, le cédant serait sous-payé et le
+ *     cessionnaire surpayé du même montant.
+ *
+ * ⚠️ `conteste` coupe l'affichage de la position pour un porteur donné. À
+ * réserver aux cas où la **qualité de créancier** est en discussion — pas aux
+ * cas où c'est seulement le montant qui l'est.
  */
 
 // ── Le registre des porteurs, en KV ─────────────────────────────────────────
 
-export type TypePorteur = "physique" | "morale";
+export type { TypePorteur, LigneOca, Versement } from "@/lib/oca";
+import type { TypePorteur, LigneOca, Versement } from "@/lib/oca";
 
 export interface Porteur {
   /** Identifiant stable, choisi à la saisie. Sert de clé — ne pas le changer. */
   id: string;
   nom: string;
   /**
-   * Décide de la retenue à la source de 30 %. Non utilisé pour l'affichage
-   * aujourd'hui (voir plus haut), mais saisi dès maintenant : c'est une donnée
-   * de fait, et la redemander plus tard coûterait un aller-retour.
+   * Décide de la retenue à la source de 30 %.
+   *
+   * ⚠️ À VÉRIFIER SUR LE BULLETIN, PAS À DEVINER. Le tableur de mai porte
+   * « personne physique (à confirmer) » sur au moins un porteur. Se tromper
+   * fait afficher 30 % de trop — ou fait manquer un reversement au Trésor.
    */
   type: TypePorteur;
-  /** Nominal souscrit, en euros. */
-  montant: number;
-  /** Vrai quand la qualité même de porteur est en discussion. */
+  /**
+   * Les lignes d'obligations du porteur.
+   *
+   * ⚠️ PLUSIEURS LIGNES SONT LA NORME, PAS L'EXCEPTION, depuis les cessions du
+   * 04/02/2026 : un porteur peut cumuler sa souscription d'origine et une
+   * quote-part reçue, avec deux points de départ d'intérêts différents.
+   */
+  lignes: LigneOca[];
+  /** Les virements reçus par ce porteur. Imputés du plus ancien au plus récent. */
+  versements: Versement[];
+  /** Coupe l'affichage de la position : la qualité de porteur est en discussion. */
   conteste?: boolean;
+}
+
+/**
+ * Le nominal total d'un porteur — la somme de ses lignes.
+ *
+ * ⚠️ Une ligne CÉDÉE garde son nominal ici alors que le porteur ne la détient
+ * plus : c'est volontaire, elle a produit des intérêts qu'on lui doit encore.
+ * Ne pas s'en servir pour totaliser l'émission, on compterait deux fois.
+ */
+export function nominalDe(p: Porteur): number {
+  return (p.lignes ?? []).reduce((s, l) => s + (l.nominal || 0), 0);
 }
 
 const CLE_PORTEURS = "oblig:porteurs";

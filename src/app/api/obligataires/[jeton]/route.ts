@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { resoudreJeton } from "@/lib/obligataires";
+import { resoudreJeton, nominalDe } from "@/lib/obligataires";
+import { calculerPosition } from "@/lib/oca";
 import { bilanPourPorteurs } from "@/lib/bilan";
 
 export const dynamic = "force-dynamic";
@@ -8,20 +9,20 @@ export const dynamic = "force-dynamic";
  * Ce que lit la page d'un porteur d'OCA.
  *
  * ⚠️ PAS D'EN-TÊTE `Authorization` ICI, ET C'EST VOULU. Le jeton EST l'accès :
- * il arrive par l'URL, parce que les destinataires sont sept personnes à qui on
- * envoie un lien par WhatsApp, pas des utilisateurs d'une application. La
- * contrepartie est assumée — qui détient le lien peut lire — et elle est tenable
- * parce que la réponse ne contient QUE les comptes de la société : aucune
- * donnée personnelle, et rien sur les autres porteurs.
+ * il arrive par l'URL, parce que les destinataires sont une poignée de
+ * personnes à qui on envoie un lien par WhatsApp, pas des utilisateurs d'une
+ * application. La contrepartie est assumée — qui détient le lien peut lire.
  *
- * ⚠️ ON NE RENVOIE NI LE MONTANT SOUSCRIT NI UNE CRÉANCE. Voir l'en-tête de
- * `@/lib/obligataires` : quatre points sont ouverts (cession non tranchée,
- * brut contre net, intérêts de retard, montant contesté) et tout chiffre
- * individuel affiché vaudrait reconnaissance. Seul le prénom et le nom
- * reviennent, pour que la personne sache que le lien est bien le sien.
+ * ⚠️ ON NE RENVOIE QUE LA POSITION DU DEMANDEUR. Jamais la liste des autres
+ * porteurs, jamais leurs montants : un obligataire n'a pas à savoir ce que les
+ * autres ont souscrit. Le jeton résout une personne, et une seule.
  *
- * ⚠️ `no-store` : cette réponse est nominative. Elle ne doit jamais atterrir
- * dans un cache partagé, où le lien de l'un servirait la page de l'autre.
+ * ⚠️ LA POSITION EST CALCULÉE ICI, PAS STOCKÉE. Les intérêts de retard courent
+ * tous les jours : un montant figé en base serait périmé le lendemain, et
+ * périmé à la baisse — c'est-à-dire en défaveur du porteur.
+ *
+ * ⚠️ `no-store, private` : la réponse est nominative. Dans un cache partagé,
+ * le lien de l'un servirait la page de l'autre.
  */
 export async function GET(
   _request: Request,
@@ -36,10 +37,32 @@ export async function GET(
     return NextResponse.json({ error: "Lien inconnu ou expiré" }, { status: 404 });
   }
 
+  const { porteur } = acces;
+
   try {
     const bilan = await bilanPourPorteurs(new Date().getFullYear());
+
+    // `conteste` coupe la position, jamais les comptes de la société : même
+    // un porteur dont la qualité est discutée est fondé à voir où en est
+    // l'entreprise qui lui doit de l'argent.
+    const position = porteur.conteste
+      ? null
+      : calculerPosition(
+          porteur.lignes ?? [],
+          porteur.type,
+          porteur.versements ?? []
+        );
+
     return NextResponse.json(
-      { porteur: { nom: acces.porteur.nom }, bilan },
+      {
+        porteur: {
+          nom: porteur.nom,
+          nominal: nominalDe(porteur),
+          conteste: porteur.conteste === true,
+        },
+        position,
+        bilan,
+      },
       { headers: { "Cache-Control": "no-store, private" } }
     );
   } catch (error) {

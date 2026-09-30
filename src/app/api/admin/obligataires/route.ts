@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { estAdmin } from "@/lib/auth";
+import { calculerPosition } from "@/lib/oca";
 import {
   listerPorteurs,
   enregistrerPorteurs,
@@ -20,18 +21,54 @@ export const dynamic = "force-dynamic";
  * par cette route. Voir l'en-tête de `@/lib/obligataires`.
  */
 
+/** `2026-01-31` et rien d'autre — une date molle fausserait tout le prorata. */
+const DATE_ISO = /^\d{4}-\d{2}-\d{2}$/;
+const dateOuRien = (v: unknown) =>
+  typeof v === "string" && DATE_ISO.test(v) ? v : undefined;
+
 function nettoyer(p: unknown): Porteur | null {
   if (!p || typeof p !== "object") return null;
   const o = p as Record<string, unknown>;
   const id = typeof o.id === "string" ? o.id.trim() : "";
   const nom = typeof o.nom === "string" ? o.nom.trim() : "";
-  const montant = Number(o.montant);
-  if (!id || !nom || !Number.isFinite(montant) || montant < 0) return null;
+  if (!id || !nom) return null;
+
+  const lignes = (Array.isArray(o.lignes) ? o.lignes : [])
+    .map((l) => {
+      const x = (l ?? {}) as Record<string, unknown>;
+      const nominal = Number(x.nominal);
+      if (!Number.isFinite(nominal) || nominal <= 0) return null;
+      return {
+        nominal: Math.round(nominal),
+        depuis: dateOuRien(x.depuis),
+        jusqua: dateOuRien(x.jusqua),
+      };
+    })
+    .filter((l): l is NonNullable<typeof l> => l !== null);
+
+  if (!lignes.length) return null;
+
+  const versements = (Array.isArray(o.versements) ? o.versements : [])
+    .map((v) => {
+      const x = (v ?? {}) as Record<string, unknown>;
+      const montant = Number(x.montant);
+      const date = dateOuRien(x.date);
+      if (!date || !Number.isFinite(montant) || montant <= 0) return null;
+      return {
+        date,
+        montant: Math.round(montant * 100) / 100,
+        libelle: typeof x.libelle === "string" ? x.libelle.trim() : undefined,
+      };
+    })
+    .filter((v): v is NonNullable<typeof v> => v !== null)
+    .sort((a, b) => a.date.localeCompare(b.date));
+
   return {
     id,
     nom,
     type: o.type === "physique" ? "physique" : "morale",
-    montant: Math.round(montant),
+    lignes,
+    versements,
     conteste: o.conteste === true,
   };
 }
@@ -51,6 +88,9 @@ export async function GET(request: Request) {
         jeton: jeton ?? null,
         vuLe: acces?.vuLe ?? null,
         ouvertures: acces?.ouvertures ?? 0,
+        // La position telle que le porteur la verra — Étienne doit pouvoir la
+        // relire avant d'envoyer le lien, pas la découvrir en même temps que lui.
+        position: calculerPosition(p.lignes ?? [], p.type, p.versements ?? []),
       };
     })
   );
@@ -79,7 +119,7 @@ export async function PUT(request: Request) {
     const porteurs = brut.map(nettoyer).filter((p: Porteur | null): p is Porteur => p !== null);
     if (porteurs.length !== brut.length) {
       return NextResponse.json(
-        { error: "Chaque porteur doit avoir un identifiant, un nom et un montant" },
+        { error: "Chaque porteur doit avoir un identifiant, un nom et au moins une ligne d'obligations avec un nominal" },
         { status: 400 }
       );
     }

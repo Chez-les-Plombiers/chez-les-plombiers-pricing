@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Bilan } from "@/lib/bilan";
+import type { Position } from "@/lib/oca";
 
 /**
  * La page que reçoit un porteur d'OCA.
@@ -25,6 +26,13 @@ const MOIS = [
   "juillet", "août", "septembre", "octobre", "novembre", "décembre",
 ];
 
+const jourMois = (iso: string) =>
+  new Date(iso + "T12:00:00Z").toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
 const euros = (n: number) =>
   new Intl.NumberFormat("fr-FR", {
     style: "currency",
@@ -32,8 +40,15 @@ const euros = (n: number) =>
     maximumFractionDigits: 0,
   }).format(n);
 
+interface Porteur {
+  nom: string;
+  nominal: number;
+  conteste: boolean;
+}
+
 interface Reponse {
-  porteur: { nom: string };
+  porteur: Porteur;
+  position: Position | null;
   bilan: Bilan;
 }
 
@@ -78,7 +93,7 @@ export function PageObligataire({ jeton }: { jeton: string }) {
     );
   }
 
-  const { porteur, bilan } = data;
+  const { porteur, position, bilan } = data;
   const arrete = new Date(bilan.arreteLe);
   const dernierEchu = [...bilan.mois].reverse().find((m) => m.statut !== "planned");
 
@@ -245,17 +260,8 @@ export function PageObligataire({ jeton }: { jeton: string }) {
           </section>
         )}
 
-        {/* ── Ce que la page ne dit pas ── */}
-        <section className="mt-10 rounded-lg border border-border bg-card p-5">
-          <h2 className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
-            Votre position
-          </h2>
-          <p className="mt-2 text-sm leading-relaxed">
-            Le détail de votre ligne — intérêts dus, versements, échéances — ne
-            figure pas ici. Il est en cours de mise au propre avec le cabinet, et
-            Étienne vous l&apos;adresse directement.
-          </p>
-        </section>
+        {/* ── Votre position ── */}
+        <VotrePosition porteur={porteur} position={position} />
 
         <footer className="mt-10 border-t border-border pt-6 text-xs leading-relaxed text-muted">
           <p>
@@ -269,6 +275,188 @@ export function PageObligataire({ jeton }: { jeton: string }) {
         </footer>
       </div>
     </div>
+  );
+}
+
+/**
+ * Le bloc « votre position ».
+ *
+ * 🔴 CE QUI EST AFFICHÉ ICI ENGAGE LA SOCIÉTÉ. Décision d'Étienne, 30/09/2026 :
+ * « oui, et ça me va, je leur dois de l'argent ». Ne pas retirer ce bloc, ni
+ * l'édulcorer, sans le lui redemander.
+ *
+ * ⚠️ ON MONTRE LE BRUT **ET** LE NET quand il y a retenue à la source. Afficher
+ * le seul brut à une personne physique promettrait 30 % de plus qu'elle ne
+ * touchera ; afficher le seul net masquerait un prélèvement qu'elle doit
+ * pouvoir déclarer. Les deux, ou rien.
+ *
+ * ⚠️ LES INTÉRÊTS DE RETARD SONT COMPTÉS, en faveur du porteur (art. 4.5, 10 %).
+ * Les taire donnerait un chiffre faux, et faux à la baisse — c'est-à-dire un
+ * chiffre qui arrange la société. On ne fait pas ça sur une page qu'on envoie
+ * à un créancier.
+ */
+function VotrePosition({
+  porteur,
+  position,
+}: {
+  porteur: Porteur;
+  position: Position | null;
+}) {
+  if (porteur.conteste || !position) {
+    return (
+      <section className="mt-10 rounded-lg border border-border bg-card p-5">
+        <h2 className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted">
+          Votre position
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed">
+          Le détail de votre ligne fait l&apos;objet d&apos;un échange en cours.
+          Étienne vous l&apos;adresse directement.
+        </p>
+      </section>
+    );
+  }
+
+  const aRetenue = position.totalRetenue > 0;
+  const aRegler = position.resteDuAvecRetard > 0.5;
+
+  return (
+    <section className="mt-10 rounded-lg border border-accent/40 bg-card p-5">
+      <h2 className="font-mono text-[10px] uppercase tracking-[0.2em] text-accent">
+        Votre position
+      </h2>
+
+      <div className="mt-4 flex flex-wrap items-baseline gap-x-8 gap-y-2 border-b border-border pb-4">
+        <div>
+          <p className="font-mono text-[9px] uppercase tracking-wider text-muted">
+            Nominal souscrit
+          </p>
+          <p className="font-mono text-lg font-semibold tabular-nums">
+            {euros(position.nominalTotal)}
+          </p>
+        </div>
+        <div>
+          <p className="font-mono text-[9px] uppercase tracking-wider text-muted">
+            Taux
+          </p>
+          <p className="font-mono text-lg font-semibold tabular-nums">
+            {(position.taux * 100).toFixed(0)} %
+          </p>
+        </div>
+        {position.prochaineEcheance && (
+          <div>
+            <p className="font-mono text-[9px] uppercase tracking-wider text-muted">
+              Prochaine échéance
+            </p>
+            <p className="font-mono text-lg font-semibold tabular-nums">
+              {jourMois(position.prochaineEcheance)}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Les échéances échues */}
+      <div className="mt-4 overflow-x-auto">
+        <table className="w-full min-w-[440px] border-collapse text-sm">
+          <thead>
+            <tr>
+              <Th className="text-left">Échéance</Th>
+              {aRetenue && <Th className="text-right">Brut</Th>}
+              {aRetenue && <Th className="text-right">Retenue 30 %</Th>}
+              <Th className="text-right">{aRetenue ? "Net dû" : "Dû"}</Th>
+              <Th className="text-right">Reçu</Th>
+              <Th className="text-right">Restant</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {position.echeances.map((e) => (
+              <tr key={e.date} className="border-b border-border/60">
+                <td className="py-2.5 pr-3">
+                  {jourMois(e.date)}
+                  {e.jours < 360 && (
+                    <span className="ml-2 font-mono text-[9px] uppercase tracking-wider text-muted">
+                      {e.jours} j
+                    </span>
+                  )}
+                </td>
+                {aRetenue && (
+                  <td className="py-2.5 text-right font-mono tabular-nums text-muted">
+                    {euros(e.brut)}
+                  </td>
+                )}
+                {aRetenue && (
+                  <td className="py-2.5 text-right font-mono tabular-nums text-muted">
+                    −{euros(e.retenue)}
+                  </td>
+                )}
+                <td className="py-2.5 text-right font-mono tabular-nums">
+                  {euros(e.net)}
+                </td>
+                <td className="py-2.5 text-right font-mono tabular-nums text-muted">
+                  {euros(e.regle)}
+                </td>
+                <td
+                  className={`py-2.5 text-right font-mono tabular-nums ${
+                    e.restant > 0.5 ? "text-[#d98080]" : "text-[#5cb87c]"
+                  }`}
+                >
+                  {euros(e.restant)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Le solde */}
+      <div className="mt-4 space-y-1.5 border-t border-border pt-4 text-sm">
+        {position.totalInteretsDeRetard > 0.5 && (
+          <div className="flex items-baseline justify-between gap-4">
+            <span className="text-muted">
+              Intérêts de retard (10 %, art. 4.5)
+            </span>
+            <span className="font-mono tabular-nums text-muted">
+              {euros(position.totalInteretsDeRetard)}
+            </span>
+          </div>
+        )}
+        {position.tropVerse > 0.5 && (
+          <div className="flex items-baseline justify-between gap-4">
+            <span className="text-muted">
+              Avance déjà versée, imputée sur la suite
+            </span>
+            <span className="font-mono tabular-nums text-muted">
+              {euros(position.tropVerse)}
+            </span>
+          </div>
+        )}
+        <div className="flex items-baseline justify-between gap-4 pt-1">
+          <span className="font-semibold">
+            {aRegler ? "Reste dû à ce jour" : "Solde"}
+          </span>
+          <span
+            className={`font-mono text-xl font-semibold tabular-nums ${
+              aRegler ? "text-[#d98080]" : "text-[#5cb87c]"
+            }`}
+          >
+            {euros(position.resteDuAvecRetard)}
+          </span>
+        </div>
+      </div>
+
+      <p className="mt-4 text-xs leading-relaxed text-muted">
+        {aRetenue ? (
+          <>
+            Vous êtes imposé au prélèvement forfaitaire unique : la société
+            retient <strong>30 %</strong> à la source (12,8 % d&apos;acompte
+            d&apos;impôt sur le revenu et 17,2 % de prélèvements sociaux) et les
+            reverse au Trésor. Le montant « net dû » est ce que vous recevez ;
+            le brut est ce que vous déclarez.{" "}
+          </>
+        ) : null}
+        Intérêts calculés au taux de {(position.taux * 100).toFixed(0)} % l&apos;an,
+        base 365 jours, non capitalisés, à compter du 24 septembre 2024.
+      </p>
+    </section>
   );
 }
 

@@ -476,6 +476,77 @@ Mois | Statut (auto) | Charges | CA | CA Prévi. | Résultat | Cumul
 ### Autres fonctionnalités
 - Sélecteur année, filtres période (T1-T4, S1-S2), export CSV, réinitialiser, synchro
 
+## Page des obligataires — `chezlesplombiers.fr/obligataires/<jeton>` (30/09/2026)
+
+Un lien **nominatif** par porteur d'OCA, révocable un par un. Étienne saisit les porteurs
+et récupère les liens dans **`/admin` → Obligataires**. La page montre les comptes de la
+société — encaissé, charges, solde, mois par mois — et le prévisionnel des mois à venir.
+
+| Fichier | Rôle |
+|---|---|
+| `src/lib/obligataires.ts` | identité et accès. **La mécanique seule.** |
+| `src/lib/bilan.ts` | les chiffres, **partagés avec le tableau de bord** |
+| `src/app/obligataires/[jeton]/` | la page du porteur |
+| `src/app/api/obligataires/[jeton]/` | lecture publique, résolue par le jeton |
+| `src/app/api/admin/obligataires/` | saisie, création et révocation des liens |
+
+### 🔴 AUCUN NOM DANS LE CODE
+`Chez-les-Plombiers/chez-les-plombiers-pricing` et `chez-les-plombiers` sont **PUBLICS sur
+GitHub** (vérifié le 30/09/2026, malgré ce que ce fichier affirme plus haut). Y inscrire la
+liste des porteurs et leurs montants publierait **qui a prêté combien à la société** — des
+personnes privées, dont certaines en discussion juridique avec elle. Et ce serait
+irréversible : GitHub garde l'historique après suppression du fichier.
+
+→ La liste vit **uniquement en KV** : `oblig:porteurs`, `oblig:acces:<jeton>`, `oblig:index`.
+Rendre le dépôt privé ne rattraperait rien : l'historique public est déjà diffusé.
+
+### 🔴 AUCUNE CRÉANCE INDIVIDUELLE AFFICHÉE
+Ce n'est pas une omission technique. Au 30/09/2026, quatre points sont ouverts — source
+`CHEZ LES PLOMBIERS/ADMIN/COMPTABLES/OCA/CALCUL_OCA_2026_05.xlsx` :
+
+1. **Une cession n'est pas tranchée.** Côté Maison a cédé ses 50 000 € à trois tiers le
+   04/02/2026 ; la société envisage de refuser au titre de l'article 12.
+2. **Le brut n'est pas le net** : 30 % de retenue à la source sur les personnes physiques.
+3. **Les intérêts de retard courent à 10 %** (art. 4.5), en faveur du porteur.
+4. **Un montant est contesté**, à ~470 € près.
+
+Un chiffre affiché à un porteur **vaudrait reconnaissance de dette**. Ne pas ajouter de
+bloc « votre position » avant que les quatre points soient réglés.
+
+### ⚠️ Le proxy du site vitrine casserait tous les liens
+`chez-les-plombiers/src/proxy.ts` redirige en **301** tout chemin contenant une majuscule
+vers sa version minuscule. Le jeton est du **base64url** : il en contient. Sans la sortie
+anticipée sur `/obligataires/`, chaque lien envoyé partirait vers un jeton différent — et
+le 301 serait **mis en cache par le navigateur du porteur**. Constaté en production le
+30/09 : 301 avant le déploiement du correctif, 200 après. **Ne jamais déplacer ce bloc
+après la normalisation.**
+
+### ⚠️ Deux corrections embarquées, qui valent pour tout le dashboard
+- **Le statut des mois est déduit de la date**, dans `statutDuMois()`. Il était écrit en
+  dur dans `finance-defaults.ts`, figé au 22/04/2026 : le 30 septembre, le tableau
+  annonçait encore septembre comme une **prévision** alors qu'il était encaissé. Sans
+  conséquence pour Étienne, trompeur pour un tiers.
+- **Le chargement d'une année est sorti de `/api/finances`** vers `chargerAnnee()`. La page
+  des porteurs doit lire **exactement** les mêmes chiffres ; deux implémentations auraient
+  fini par diverger, et c'est un obligataire qui s'en serait aperçu. Ne pas réintroduire de
+  calcul local dans la route.
+
+### Le prévisionnel
+Bâti sur **le même mois de l'an passé + 10 %** (choix d'Étienne, 30/09/2026), lu dans
+`jours-vendus.ts`. Affiché **à part** du réalisé : ce n'est pas un carnet de commandes, il
+ne lit pas le calendrier des réservations. Q4 2026 : 73 773 € contre 67 066 € réalisés au
+Q4 2025.
+
+⚠️ La série de référence est **incomplète** — elle ne porte que les mois facturés, 2025
+commence en mars. Un mois absent vaut 0, ce qui sous-estime plutôt que d'inventer.
+
+### ⏳ Ce qui reste ouvert
+- Le poste **« Expert-comptable » (2 000 €/mois)** est présent dans
+  `DEFAULT_CHARGES_POSTES` mais **absent des charges en KV** : les charges affichées sont
+  donc sous-estimées d'environ 24 000 € sur l'année. À trancher avec Étienne.
+- Les charges de septembre portent **14 700 €** d'intérêts obligataires, alors que
+  l'annuité réelle est de **15 400 €** (7 % de 220 000, pas de 210 000).
+
 ## Convention
 - Pas de border-radius (esthétique brutaliste)
 - Font mono Space Mono pour titres/boutons, Inter pour le corps
