@@ -320,7 +320,15 @@ function VotrePosition({
   const aRegler = position.resteDuAvecRetard > 0.5;
   // La dernière échéance échue porte la date limite de paiement la plus
   // récente — c'est celle qui intéresse un porteur qui attend son virement.
-  const derniereEcheance = position.echeances[position.echeances.length - 1];
+  //
+  // ⚠️ ON NE L'AFFICHE QUE SI ELLE EST ENCORE DEVANT NOUS. Sur une ligne cédée,
+  // la limite est la date de cession, donc passée : l'annoncer sous « à régler
+  // au plus tard le » ferait lire une échéance à venir là où il y a un retard.
+  const derniere = position.echeances[position.echeances.length - 1];
+  const limite =
+    derniere && derniere.exigibleLe >= new Date().toISOString().slice(0, 10)
+      ? derniere
+      : null;
 
   return (
     <section className="mt-10 rounded-lg border border-accent/40 bg-card p-5">
@@ -355,13 +363,13 @@ function VotrePosition({
             </p>
           </div>
         )}
-        {derniereEcheance && (
+        {limite && (
           <div>
             <p className="font-mono text-[9px] uppercase tracking-wider text-muted">
               À régler au plus tard le
             </p>
             <p className="font-mono text-lg font-semibold tabular-nums">
-              {jourMois(derniereEcheance.exigibleLe)}
+              {jourMois(limite.exigibleLe)}
             </p>
           </div>
         )}
