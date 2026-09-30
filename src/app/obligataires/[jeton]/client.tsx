@@ -203,6 +203,26 @@ export function PageObligataire({ jeton }: { jeton: string }) {
             </table>
           </div>
 
+          {/*
+            ⚠️ CETTE MENTION N'EST PAS UNE PRÉCAUTION D'AVOCAT, C'EST UNE
+            CORRECTION DE LECTURE. Le tableau montre les charges réellement
+            décaissées par CLP. Or deux postes dont la société bénéficie sont
+            payés par Archibald & Abraham : les honoraires du cabinet
+            (2 192,33 €/mois sur le CIC d'AAA, vérifié par le fil COMPTA CLP le
+            30/09/2026) et le salaire de Céline. Un lecteur qui voit un compte
+            d'exploitation sans la moindre ligne de comptabilité ni de
+            personnel se demandera ce qu'on lui cache — et il aura raison.
+            Le taire rendrait le solde d'exploitation flatteur sans le dire.
+          */}
+          <p className="mt-3 text-xs leading-relaxed text-muted">
+            Les charges présentées sont celles <strong>réellement supportées par
+            Chez les Plombiers SAS</strong>. Certaines prestations dont la
+            société bénéficie — honoraires du cabinet comptable, frais de
+            personnel — sont portées par <strong>Archibald &amp; Abraham</strong>,
+            société sœur, et ne figurent donc pas ici. Elles alimentent le compte
+            courant entre les deux sociétés.
+          </p>
+
           {dernierEchu && (
             <p className="mt-3 text-xs leading-relaxed text-muted">
               Le chiffre d&apos;affaires est compté <strong>au mois où
