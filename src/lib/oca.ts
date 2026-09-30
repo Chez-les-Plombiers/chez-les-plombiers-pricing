@@ -35,6 +35,45 @@ export const BASE_JOURS = 365;
 /** Art. 4.5 — intérêts de retard, en faveur du porteur. */
 export const TAUX_RETARD = 0.1;
 
+/** Durée de l'emprunt : **cinq ans**, pas sept. Échéance finale le 24/09/2029. */
+export const DUREE_ANNEES = 5;
+
+/**
+ * 🔴 LE DÉLAI DE GRÂCE CONTRACTUEL — personne ne l'avait relevé avant le
+ * 30/09/2026, et il déplace la date à partir de laquelle un porteur peut
+ * réclamer des intérêts de retard.
+ *
+ * Décisions du Président du 19/07/2024, « Paiement des intérêts » :
+ *
+ *   « chaque année, à la date anniversaire de la Date de Souscription **ou au
+ *     plus tard, le dernier jour ouvré du trimestre civil en cours suivant
+ *     ladite date anniversaire** »
+ *
+ * L'anniversaire tombe le 24 septembre, dans le troisième trimestre : la
+ * société a donc jusqu'au **dernier jour ouvré du 30 septembre** pour payer
+ * sans être en défaut. Compter le retard depuis le 24 surfacture la société de
+ * six jours par échéance.
+ *
+ * ⚠️ LECTURE RETENUE, ET ELLE EST LA MOINS FAVORABLE À LA SOCIÉTÉ. « le
+ * trimestre civil en cours suivant ladite date anniversaire » se lit aussi
+ * comme le trimestre SUIVANT — le quatrième — ce qui repousserait l'échéance au
+ * 31 décembre et effacerait presque tout le retard de l'exercice en cours. On
+ * retient le trimestre qui CONTIENT l'anniversaire, parce qu'en cas de doute on
+ * ne s'octroie pas le délai le plus long contre son créancier. À faire trancher
+ * par le cabinet : l'écart se chiffre en centaines d'euros.
+ */
+function finDuDelaiDeGrace(anniversaire: string): string {
+  const [a, m] = anniversaire.split("-").map(Number);
+  // Dernier jour du trimestre civil contenant l'anniversaire.
+  const moisFin = Math.ceil(m / 3) * 3;
+  const dernier = new Date(Date.UTC(a, moisFin, 0));
+  // Puis on recule au dernier jour OUVRÉ : samedi → vendredi, dimanche → vendredi.
+  const jour = dernier.getUTCDay();
+  if (jour === 6) dernier.setUTCDate(dernier.getUTCDate() - 1);
+  if (jour === 0) dernier.setUTCDate(dernier.getUTCDate() - 2);
+  return dernier.toISOString().slice(0, 10);
+}
+
 /**
  * Art. 125 A CGI + CSG/CRDS : 12,8 % + 17,2 % = 30 %, dus par les seules
  * personnes physiques. La société **retient à la source et reverse au Trésor**
@@ -78,6 +117,11 @@ export interface Versement {
 export interface Echeance {
   /** AAAA-MM-JJ — anniversaire, ou date de cession pour un reliquat. */
   date: string;
+  /**
+   * La date à partir de laquelle le retard court réellement : fin du délai de
+   * grâce contractuel pour une échéance annuelle, la date elle-même sinon.
+   */
+  exigibleLe: string;
   /** Ce que couvre l'échéance, en clair. */
   periode: string;
   /** Nombre de jours courus — 365 pour une année pleine, moins pour un prorata. */
@@ -146,17 +190,28 @@ function periodes(ligne: LigneOca, aujourdhui: string) {
 
   // Les anniversaires strictement postérieurs au début de la ligne.
   const bornes: string[] = [];
-  for (let n = 1; n <= 7; n++) {
+  for (let n = 1; n <= DUREE_ANNEES; n++) {
     const a = anniversaire(n);
     if (jours(debut, a) > 0 && (!fin || jours(a, fin) > 0)) bornes.push(a);
   }
   // Une ligne arrêtée porte un reliquat exigible le jour de l'arrêt.
   if (fin) bornes.push(fin);
 
-  const out: { date: string; depuis: string; jusqua: string }[] = [];
+  const out: {
+    date: string;
+    depuis: string;
+    jusqua: string;
+    /** Faux pour un reliquat de cession — voir le délai de grâce plus bas. */
+    anniversaire: boolean;
+  }[] = [];
   let curseur = debut;
   for (const b of bornes) {
-    out.push({ date: b, depuis: curseur, jusqua: b });
+    out.push({
+      date: b,
+      depuis: curseur,
+      jusqua: b,
+      anniversaire: b !== fin,
+    });
     curseur = b;
   }
   // On ne retient que ce qui est exigible aujourd'hui.
@@ -184,13 +239,18 @@ export function calculerPosition(
   const tauxRetenue = type === "physique" ? TAUX_RETENUE : 0;
 
   // Toutes les périodes de toutes les lignes, fusionnées par date d'exigibilité.
-  const parDate = new Map<string, { jours: number; brut: number; libelles: string[] }>();
+  const parDate = new Map<
+    string,
+    { jours: number; brut: number; libelles: string[]; anniversaire: boolean }
+  >();
   for (const ligne of lignes) {
     for (const p of periodes(ligne, aujourdhui)) {
       const n = jours(p.depuis, p.jusqua);
       if (n <= 0) continue;
       const brut = (ligne.nominal * TAUX_ANNUEL * n) / BASE_JOURS;
-      const e = parDate.get(p.date) ?? { jours: 0, brut: 0, libelles: [] };
+      const e =
+        parDate.get(p.date) ??
+        { jours: 0, brut: 0, libelles: [], anniversaire: p.anniversaire };
       e.jours = Math.max(e.jours, n);
       e.brut += brut;
       e.libelles.push(`${fr(p.depuis)} → ${fr(p.jusqua)}`);
@@ -203,15 +263,23 @@ export function calculerPosition(
   const totalVerse = disponible;
 
   const echeances: Echeance[] = dates.map((date) => {
-    const { jours: n, brut, libelles } = parDate.get(date)!;
+    const { jours: n, brut, libelles, anniversaire: estAnniv } = parDate.get(date)!;
     const retenue = brut * tauxRetenue;
     const net = brut - retenue;
     const regle = Math.min(disponible, net);
     disponible -= regle;
     const restant = Math.max(0, net - regle);
-    const joursDeRetard = restant > 0 ? Math.max(0, jours(date, aujourdhui)) : 0;
+
+    // ⚠️ LE RETARD SE COMPTE DEPUIS LA FIN DU DÉLAI DE GRÂCE, pas depuis
+    // l'anniversaire. Le délai ne vaut que pour le paiement annuel prévu au
+    // contrat : un reliquat de cession est exigible le jour de la cession.
+    const exigibleLe = estAnniv ? finDuDelaiDeGrace(date) : date;
+    const joursDeRetard =
+      restant > 0 ? Math.max(0, jours(exigibleLe, aujourdhui)) : 0;
+
     return {
       date,
+      exigibleLe,
       periode: [...new Set(libelles)].join(" · "),
       jours: n,
       brut,
@@ -234,7 +302,7 @@ export function calculerPosition(
   let prochaine: string | null = null;
   for (const ligne of lignes) {
     if (ligne.jusqua) continue;
-    for (let n = 1; n <= 7; n++) {
+    for (let n = 1; n <= DUREE_ANNEES; n++) {
       const a = anniversaire(n);
       if (jours(a, aujourdhui) < 0 && (!prochaine || a < prochaine)) {
         prochaine = a;
