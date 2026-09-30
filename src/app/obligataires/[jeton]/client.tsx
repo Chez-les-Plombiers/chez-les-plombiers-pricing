@@ -208,9 +208,17 @@ export function PageObligataire({ jeton }: { jeton: string }) {
             CORRECTION DE LECTURE. Le tableau montre les charges réellement
             décaissées par CLP. Or ARCHIBALD & ABRAHAM, sa société MÈRE, porte des
             charges dont CLP bénéficie — le fil COMPTA CLP en a relevé pour
-            environ 66 000 € sur 2026 : honoraires du cabinet, rémunération
-            administrative, télécoms, maintenance réseau. Sans convention de
-            refacturation, et sans refacturation constatée. Un lecteur qui voit
+            environ 85 000 € sur 2026 : salaires, honoraires du cabinet, le
+            loyer de L'APPARTEMENT, URSSAF, télécoms, maintenance réseau. Sans
+            convention de refacturation, et sans refacturation constatée.
+
+            🔴 LE LOYER DE L'APPARTEMENT EST LE CAS LE PLUS NET, et c'est
+            pourquoi il est nommé dans le texte alors que les autres sont
+            enumérés en vrac : AAA porte le bail et paie le loyer, CLP encaisse
+            les revenus de location du lieu. Le déséquilibre est visible des
+            deux côtés à la fois. Un porteur qui lit les revenus de CLP sans
+            savoir ça lit un résultat flatté — et c'est le sujet que le cabinet
+            a classé « problématique fiscale à traiter en 2026 ». Un lecteur qui voit
             un compte d'exploitation sans la moindre ligne de comptabilité ni
             de personnel se demandera ce qu'on lui cache, et il aura raison.
 
@@ -229,10 +237,11 @@ export function PageObligataire({ jeton }: { jeton: string }) {
           */}
           <p className="mt-3 text-xs leading-relaxed text-muted">
             Certaines charges bénéficiant à Chez les Plombiers sont portées par{" "}
-            <strong>Archibald &amp; Abraham</strong>, sa société mère : honoraires
-            du cabinet comptable, rémunération administrative, une partie des
-            frais de télécommunications et de maintenance réseau. Elles ne
-            figurent pas dans les charges ci-dessus. Le compte courant entre les
+            <strong>Archibald &amp; Abraham</strong>, sa société mère :
+            honoraires du cabinet comptable, rémunération administrative,{" "}
+            <strong>le loyer du troisième lieu dont Chez les Plombiers exploite
+            les revenus</strong>, télécommunications et maintenance réseau. Elles
+            ne figurent pas dans les charges ci-dessus. Le compte courant entre les
             deux sociétés s&apos;élevait à environ 130 000 € au 31 décembre 2025,
             selon les comptes en cours d&apos;arrêté. La répartition définitive
             sera fixée avec le cabinet sur l&apos;exercice 2026.
