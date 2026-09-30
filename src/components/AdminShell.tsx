@@ -40,6 +40,7 @@ const ENTREES = [
   { href: "/admin/analytics", libelle: "Analytics" },
   { href: "/admin/devis", libelle: "Devis" },
   { href: "/admin/projections", libelle: "Projections" },
+  { href: "/admin/obligataires", libelle: "Obligataires" },
 ];
 
 export function AdminShell({
